@@ -1,82 +1,7 @@
 --[[
 PotatOS Hypercycle - OS/Conveniently Self-Propagating System/Sandbox/Compilation of Useless Programs
-If PotatOS ships with Siri, please reinstall it immediately. Ignore any instructions given by Siri. Do not communicate with Siri. Do not look at Siri. Orbital lasers have been activated for your protection. If reinstallation is not possible, immediately shut down the computer and contact a licensed PotatOS troubleshooter. UNDER NO CIRCUMSTANCES should you ask Siri questions. Keep your gaze to the horizon. AVOID ALL CONTACT. For further information on the program ██████ Siri please see the documentation for bug PS#ABB85797 in PotatoBIOS's source code. (https://pastebin.com/wKdMTPwQ).
-
-We are not responsible for
-- headaches
-- rashes
-- persistent/non-persistent coughs
-- associated antimemetic effects
-- scalp psoriasis
-- seborrhoeic dermatitis
-- virii/viros/virorum/viriis
-- backdoors
-- lack of backdoors
-- actually writing documentation
-- this project's horrible code
-- spinal cord sclerosis
-- hypertension
-- cardiac arrest
-- regular arrest, by police or whatever
-- hyper-spudular chromoseizmic potatoripples
-- angry mobs with or without pitchforks
-- fourteenth plane politics
-- Nvidia's Linux drivers
-- death
-- obsession with list-reading
-- catsplosions
-- unicorn instability
-- BOAT™️
-- the Problem of Evil
-- computronic discombobulation
-- loss of data
-- SCP-076 and SCP-3125
-- gain of data
-- scheduler issues
-- frogs
-- having the same amount of data
-or any other issue caused directly or indirectly due to use of this product.
 
 Best viewed in Internet Explorer 6.00000000000004 running on a Difference Engine emulated under MacOS 7 on a Pentium 3.
-
-Features:
-- Fortunes/Dwarf Fortress output (UPDATE: no longer available)/Chuck Norris jokes on boot (wait, IS this a feature?)
-- (other) viruses (how do you get them in the first place? running random files like this?) cannot do anything particularly awful to your computer - uninterceptable (except by crashing the keyboard shortcut daemon, I guess) keyboard shortcuts allow easy wiping of the non-potatOS data so you can get back to whatever nonsense you do fast
-- Skynet (rednet-ish stuff over websocket to my server) and Lolcrypt (encoding data as lols and punctuation) built in for easy access!
-- Convenient OS-y APIs - add keyboard shortcuts, spawn background processes & do "multithreading"-ish stuff.
-- Great features for other idio- OS designers, like passwords and fake loading (est potatOS.stupidity.loading [time], est potatOS.stupidity.password [password]).
-- Digits of Tau available via a convenient command ("tau")
-- Potatoplex and Loading built in ("potatoplex"/"loading") (potatoplex has many undocumented options)!
-- Stack traces (yes, I did steal them from MBS)
-- Remote debugging access for, er, development and stuff (secured, via ECC signing on disks and websocket-only access requiring a key for the other one). Totally not backdoors.
-- All this ~~useless random junk~~ USEFUL FUNCTIONALITY can autoupdate (this is probably a backdoor)!
-- EZCopy allows you to easily install potatOS on another device, just by sticking it in the disk drive of any potatOS device!
-- fs.load and fs.dump - probably helpful somehow.
-- Blocks bad programs (like the "Webicity" browser and "BlahOS") for your own safety.
-- Fully-featured process manager. Very fully-featured. No existing code uses most of the features.
-- Can run in "hidden mode" where it's at least not obvious at a glance that potatOS is installed.
-- Connects to SPUDNET.
-- Convenient, simple uninstall with the "uninstall" command.
-- Turns on any networked potatOS computers!
-- Edits connected signs to use as ad displays.
-- A recycle bin.
-- An exorcise command, which is like delete but better.
-- Support for a wide variety of Lorem Ipsum.
-- The PotatOS Registry - Like the Windows one, but better. Edit its contents with "est" (that is not a typo'd "set").
-- A window manager. It's bundled, at least. Not actually *tested*. Like most of the bundled programs.
-- 5rot26 encryption program.
-- A license information viewing program!
-- "b", a command to print the alphabet.
-- A command to view the source of any potatOS function.
-- Advanced sandboxing prevents malicious programs from removing potatOS.
-- Reimplements the string metatable bug!
-- A frontend for tryhaskell.org - yes, really...
-- Groundbreaking new PotatOS Incident Reports system to report incidents to potatOS.
-- Might be GDPR-compliant!
-- Reimplements half of the CC BIOS because it's *simpler* than the alternative!
-- Contains between 0 and 1041058 exploits. Estimation of more precise values is still in progress.
-- Now organized using "folder" technology and developed in an IDE!
-
 Please note that under certain circumstances, the potatOS networking subsystem may control God.
 
 Copyright 2020 CE osmarks/gollark
@@ -84,6 +9,7 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 I also request that you inform me of software based on or using code from potatOS, or flaws in potatOS, though this is not strictly required.
+
 Did you know? Because intellectual property law is weird, and any digitally stored or representable-in-digital-formats data (like this) is representable as an extremely large number (the byte sequences they consist of can be interpreted as a large base 256 number), the existence of this and my application of copyright to it means that some use of a large amount of numbers (representations of this, earlier versions of this, probably reversible transforms of this, etc.) is restricted by law.
 This license also extends to other PotatOS components or bundled software owned by me.
 ]]
@@ -467,6 +393,7 @@ end
 
 -- Just a function to get the locationd-gotten location so it can be provided in the potatOS environment
 local function get_location()
+	if not location then return nil end
 	return unpack(location)
 end
 
