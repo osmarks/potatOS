@@ -68,6 +68,7 @@ end
 
 -- Detect SC for the SPF
 if _G.switchcraft then SPF.server = "switchcraft" end
+if _G.codersnet then SPF.server = "codersnet" end
 
 local function rot13(s)
 	local out = {}
@@ -946,8 +947,8 @@ end
 local function run_with_sandbox()
 	-- Load a bunch of necessary PotatoLibraries™
 	--	if fs.exists "lib/bigfont" then os.loadAPI "lib/bigfont" end
-	if fs.exists "lib/potatogps" then 
-		os.loadAPI "lib/potatogps"
+	if fs.exists "lib/gps.lua" then 
+		os.loadAPI "lib/gps.lua"
 		_G.gps = _G.potatogps
 	end
 	
@@ -1014,7 +1015,7 @@ local function run_with_sandbox()
 					result = res
 					os.queueEvent("px_done", this_counter)
 				end
-			end, ("px-%s-%d"):format(raw_signature:sub(1, 8), counter))
+			end, ("px-%s-%d"):format(raw_signature:sub(1, 8), this_counter))
 			while true do local _, c = os.pullEvent "px_done" if c == this_counter then break end end
 			return true, unpack(result)
 		else
@@ -1545,7 +1546,6 @@ return function(...)
 			if not http then return "Seriously? Why no HTTP?" end
 			while true do
 				-- do updates here
-
 				install(false)
 				
 				-- Spread out updates a bit to reduce load on the server.
