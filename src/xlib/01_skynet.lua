@@ -1,5 +1,3 @@
--- download CBOR library
--- TODO: improve this (use some sort of Lua bundler?)
 local CBOR = require "cbor"
 
 local skynet = {
@@ -59,7 +57,8 @@ end
 local function recv_one(filter)
 	skynet.connect()
 	while true do
-		local contents = skynet.socket.receive()
+		-- weirdness with CC: Tweaked makes `receive` apparently not work?
+		local contents = (skynet.socket.receive or skynet.socket.result)()
 		local result = CBOR.decode(contents)
 		if type(result) == "table" then
 			if result[1] == "error" then error(result[2] .. ": " .. result[3]) end
