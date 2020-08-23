@@ -19,7 +19,7 @@ local function time()
 		return ccemuxnanoTime() / 1e9
 	elseif osepoch then 
 		return osepoch "utc" / 1000 else 
-	return os.clock() end
+	return osclock() end
 end
 
 local processes = {}
@@ -250,10 +250,10 @@ end
 -- Run main event loop
 local function run_loop()
 	while true do
-    	local ev = {coroutineyield()}
-	    for ID, proc in pairs(processes) do
-    	    tick(proc, ev)
-	    end
+		local ev = {coroutineyield()}
+		for ID, proc in pairs(processes) do
+			tick(proc, ev)
+		end
 	end
 end
 
