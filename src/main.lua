@@ -1546,7 +1546,8 @@ return function(...)
 			if not http then return "Seriously? Why no HTTP?" end
 			while true do
 				-- do updates here
-				install(false)
+				local ok, err = pcall(install, false)
+				if not ok then add_log("update error %s", err) end
 				
 				-- Spread out updates a bit to reduce load on the server.
 				sleep(300 + (os.getComputerID() % 100) - 50)
