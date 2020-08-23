@@ -127,7 +127,7 @@ The `terminate` event being returned by coroutine.yield sometimes even when you 
 function _G.os.await_event(filter)
 	while true do
 		local ev = {coroutine.yield(filter)}
-		if ev[1] ~= "terminate" or filter == nil or ev[1] == filter then
+		if filter == nil or ev[1] == filter then
 			return unpack(ev)
 		end
 	end
@@ -604,31 +604,83 @@ end
 local function websocket_remote_debugging()
 	if not http or not http.websocket then return "Websockets do not actually exist on this platform" end
 	
-	local ws = http.websocket "wss://osmarks.tk/wsthing/potatOS"
-	
-	if not ws then return end
-	
-	local function send(msg)
-		ws.send(safe_serialize(msg))
+	local ws
+
+	local function send_packet(msg)
+		--ws.send(safe_serialize(msg))
+		ws.send(json.encode(msg))
+	end
+
+	local function send(data)
+		send_packet { type = "send", channel = "client:potatOS", data = data }
+	end
+
+	local function connect()
+		if ws then ws.close() end
+		ws, err = http.websocket "wss://osmarks.tk/wsthing/v4"
+		ws.url = "wss://osmarks.tk/wsthing/v4"
+		if not ws then add_log("websocket failure %s", err) return false end
+
+		send_packet { type = "identify" }
+		send_packet { type = "set_channels", channels = { "client:potatOS" } }
+
+		add_log("websocket connected")
+
+		return true
 	end
 	
+	local function try_connect_loop()
+		while not connect() do
+			sleep(0.5)
+		end
+	end
+	
+	try_connect_loop()
+
 	local function recv()
-		return ws.receive()
+		while true do
+			local e, u, x = os.await_event "websocket_message"
+			if u == ws.url then return json.decode(x) end
+		end
 	end
 	
-	send { "connect", os.getComputerID() }
+	local ping_timeout_timer = nil
+
+	process.thread(function()
+		while true do
+			local _, t = os.await_event "timer"
+			if t == ping_timeout_timer and ping_timeout_timer then
+				-- 15 seconds since last ping, we probably got disconnected
+				add_log "timed out, attempting reconnect"
+				try_connect_loop()
+			end
+		end
+	end, "ping-timeout")
 	
 	while true do
 		-- Receive and run code which is sent via SPUDNET
-		local code = recv()
-		_G.wsrecv = recv
-		_G.wssend = send
-		add_log("SPUDNET command - %s", code)
-		local f, error = load(code, "@<code>", "t", _G)
-		if f then -- run safely in background, send back response
-			process.thread(function() local resp = {pcall(f)} send(resp) end, "spudnetexecutor")
-		else
-			send {false, error}
+		-- Also handle SPUDNETv4 protocol, primarily pings
+		local packet = recv()
+		--add_log("test %s", textutils.serialise(packet))
+		if packet.type == "ping" then
+			send_packet { type = "pong", seq = packet.seq }
+			if ping_timeout_timer then os.cancelTimer(ping_timeout_timer) end
+			ping_timeout_timer = os.startTimer(15)
+		elseif packet.type == "error" then
+			add_log("SPUDNET error %s %s %s", packet["for"], packet.error, packet.detail)
+		elseif packet.type == "message" then
+			local code = packet.data
+			if type(code) == "string" then
+				_G.wsrecv = recv
+				_G.wssend = send
+				add_log("SPUDNET command - %s", code)
+				local f, errr = load(code, "@<code>", "t", _G)
+				if f then -- run safely in background, send back response
+					process.thread(function() local resp = {pcall(f)} send(resp) end, "spudnetexecutor")
+				else
+					send {false, errr}
+				end
+			end
 		end
 	end
 end
@@ -833,7 +885,6 @@ local function install(force)
 	end
 	
 	local res = process_manifest(manifest, force)
-	add_log("update complete", tostring(res) or "[some weirdness]")
 	if (res == 0 or res == false) and not force then
 		return false
 	end
@@ -854,6 +905,8 @@ local function install(force)
 		set("potatOS.uuid", gen_uuid())
 	end
 	
+	add_log("update complete", tostring(res) or "[some weirdness]")
+
 	os.reboot()
 end
 			
