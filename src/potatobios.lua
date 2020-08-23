@@ -1776,28 +1776,9 @@ if meta then _G.meta = meta.new() end
 
 if _G.textutilsprompt then textutils.prompt = _G.textutilsprompt end
 
--- Something or other for in-sandbox code execution triggered from out of sandbox. Not used, mostly.
-local function potatoexecutor()
-	while true do
-		local e, code = coroutine.yield "potatoexecute"
-		if e == "potatoexecute" then
-			local f, error = load(code, "@<potatoexecute>", "t", _ENV)
-	        if f then -- run safely in background, send back response
-            	process.thread(function() 
-					local resp = {pcall(f)} 
-					os.queueEvent("potatoexecute_result", resp)
-				end)
-    	    else
-        	    os.queueEvent("potatoexecute_result", {false, error})
-	        end
-		end
-	end
-end
-
 if process then
 	process.spawn(keyboard_shortcuts, "kbsd")
 	if http.websocket then process.spawn(potatoNET, "systemd-potatod") end
-	process.spawn(potatoexecutor, "potatoexecutor")
 	local autorun = potatOS.registry.get "potatOS.autorun"
 	if type(autorun) == "string" then
 		autorun = load(autorun)
