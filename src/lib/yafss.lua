@@ -405,16 +405,6 @@ Allowing `setfenv` to operate on any function meant that privileged code could i
 	environment._ENV = environment
 	environment._HOST = string.format("YAFSS on %s", _HOST)
 
-	local upper = _G.hypercalls
-	environment.hypercalls = {}
-	function environment.hypercalls.upper()
-		return upper
-	end
-	function environment.hypercalls.layers()
-		if upper then return upper.layers() + 1
-		else return 1 end
-	end
-
 	function environment.os.shutdown()
 		os.queueEvent("power_state", "shutdown")
 		while true do coroutine.yield() end
@@ -441,7 +431,6 @@ local function run(root_directory, overlay, API_overrides, init)
 			env.init_code = init
 
 			local out, err = load(init, "@[init]", "t", env)
-			env.hypercalls.run = out
 			if not out then error(err) end
 			local ok, err = pcall(out) 
 			if not ok then printError(err) end
