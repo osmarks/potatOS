@@ -168,7 +168,7 @@ local function tick(proc, event)
 				proc.status = process.statuses.ERRORED
 				proc.error = res
 				if res ~= "Terminated" then -- programs terminating is normal, other errors not so much
-					BSOD(stringformat("Process %s has crashed!\nError: %s", tostring(proc.ID) or proc.name, tostring(res)))
+					BSOD(stringformat("Process %s has crashed!\nError: %s", proc.name or tostring(proc.ID), tostring(res)))
 				end
 			end
 		else
