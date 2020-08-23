@@ -50,6 +50,26 @@ Unlike most "OS"es for CC (primarily excluding Opus OS, which is actually useful
 - Integrated logging mechanism for debugging.
 - Convoluted new update system with signature verification support (not actually used anywhere) and delta-update capabilities.
 
+## Architecture
+
+PotatOS is internally fairly complex and somewhat eldritch.
+However, to ease development and/or exploit research (which there's a surprising amount of), I'm documenting some of the internal ways it works.
+
+### Boot process
+
+- normal ComputerCraft boot process - `bios.lua` runs `rom/programs/shell.lua` (or maybe multishell first) runs `rom/startup.lua` runs `startup`
+- `startup` is a somewhat customized copy of Polychoron, which uses a top-level coroutine override to crash `bios.lua`'s `parallel.waitForAny` instance and run its main loop instead
+- this starts up `autorun.lua` (which is a compiled bundle of `main.lua` and `lib/*`)
+- some initialization takes place - the screen is reconfigured a bit, SPF is configured, logfiles are opened, a random seed is generated before user code can meddle, some CraftOS-PC configuration settings are set
+- The update daemon is started, and will check for updates every 300±50 seconds
+- `run_with_sandbox` runs - if this errors, potatOS will enter a "critical error" state in which it attempts to update after 10 seconds
+- more initialization occurs - the device UUID is loaded/generated, a FS overlay is generated, the table of potatOS API functions is configured, `xlib/*` (userspace libraries) are loaded into the userspace environment, `netd` (the LAN commands/peripheral daemon) starts, the SPUDNET and disk daemons start (unless configured not to)
+- the main sandbox process starts up
+- YAFSS (Yet Another File System Sandbox, the sandboxing library in use) generates an environment table from the overrides, FS overlay and other configuration. This is passed as an argument to `load`, along with the PotatoBIOS code.
+- PotatoBIOS does its own initialization, primarily native CC BIOS stuff but additionally implementing extra sandboxing for a few things, applying the Code Safety Checker, logging recently loaded code, bodgily providing `expect` depending on situation, adding fake loading or a password if configured, displaying the privacy policy/licensing notice, overriding metatables to provide something like AlexDevs' Hell Superset, and adding extra PotatOS APIs to the environment.
+- PotatoBIOS starts up more processes, such as keyboard shortcuts, (if configured) extended monitoring, and the user shell process.
+- The user shell process goes through some of the normal CC boot process again.
+
 ## API documentation
 
 The PotatOS userspace API, mostly accessible from `_G.potatOS`, has absolutely no backward compatibility guarantees.
