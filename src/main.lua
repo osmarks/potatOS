@@ -597,11 +597,48 @@ end
 Fix bug PS#201CA2AA
 Serializing functions, recursive tables, etc. - this is done fairly often - can cause a complete crash of the SPUDNET process. This fixes that.
 ]]
--- Serialize (i.e. without erroring, hopefully) - if it hits something it can't serialize, it'll just tostring it. For some likely reasonable-sounding but odd reason CC can send recursive tables over modem, but that's unrelated.
-local function safe_serialize(data)
-	local ok, res = pcall(json.encode, data)
-	if ok then return res
-	else return json.encode(tostring(data)) end
+-- Serialize safely (i.e. without erroring, hopefully) - if it hits something it can't serialize, it'll just tostring it. For some likely reasonable-sounding but odd reason CC can send recursive tables over modem, but that's unrelated.
+
+function safe_json_serialize(x, prev)
+    local t = type(x)
+	if t == "number" then
+		if x ~= x or x <= -math.huge or x >= math.huge then
+			return tostring(x)
+		end
+		return string.format("%.14g", x)
+    elseif t == "string" then
+        return json.encode(x)
+	elseif t == "table" then
+		prev = prev or {}
+		local as_array = true
+		for k in pairs(x) do
+			if type(k) ~= "number" then as_array = false break end
+		end
+		if as_array then
+			for i = 1, #x do
+				if not x[i] then as_array = false break end
+			end
+		end
+		if as_array then
+			local res = {}
+			for i, v in ipairs(x) do
+				table.insert(res, safe_json_serialize(v))
+			end
+			return "["..table.concat(res, ",").."]"
+		else
+			local res = {}
+			for k, v in pairs(x) do
+				table.insert(res, json.encode(tostring(k)) .. ":" .. safe_json_serialize(v))
+			end
+			return "{"..table.concat(res, ",").."}"
+		end
+    elseif t == "boolean" then
+		return tostring(x)
+	elseif x == nil then
+		return nil
+	else
+        return ("%q"):format(tostring(x))
+	end
 end
 
 -- Powered by SPUDNET, the simple way to include remote debugging services in *your* OS. Contact Gollark today.
@@ -612,7 +649,7 @@ local function websocket_remote_debugging()
 
 	local function send_packet(msg)
 		--ws.send(safe_serialize(msg))
-		ws.send(json.encode(msg))
+		ws.send(safe_json_serialize(msg))
 	end
 
 	local function send(data)
@@ -671,7 +708,7 @@ local function websocket_remote_debugging()
 			if ping_timeout_timer then os.cancelTimer(ping_timeout_timer) end
 			ping_timeout_timer = os.startTimer(15)
 		elseif packet.type == "error" then
-			add_log("SPUDNET error %s %s %s", packet["for"], packet.error, packet.detail)
+			add_log("SPUDNET error %s %s %s %s", packet["for"], packet.error, packet.detail, textutils.serialise(packet))
 		elseif packet.type == "message" then
 			local code = packet.data
 			if type(code) == "string" then

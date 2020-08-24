@@ -1632,7 +1632,7 @@ function textutils.compact_serialize(x)
     if t == "number" then
         return tostring(x)
     elseif t == "string" then
-        return textutils.serialise(x)
+        return ("%q"):format(x)
     elseif t == "table" then
         local out = "{"
         for k, v in pairs(x) do
