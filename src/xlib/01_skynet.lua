@@ -58,12 +58,15 @@ local function recv_one(filter)
 	skynet.connect()
 	while true do
 		-- weirdness with CC: Tweaked makes `receive` apparently not work?
-		local contents = (skynet.socket.receive or skynet.socket.result)()
-		local result = CBOR.decode(contents)
-		if type(result) == "table" then
-			if result[1] == "error" then error(result[2] .. ": " .. result[3]) end
-			if filter(result) then
-				return result
+		--local contents = (skynet.socket.receive or skynet.socket.result)()
+		local _, u, contents = os.await_event "websocket_message"
+		if u == skynet.server then
+			local result = CBOR.decode(contents)
+			if type(result) == "table" then
+				if result[1] == "error" then error(result[2] .. ": " .. result[3]) end
+				if filter(result) then
+					return result
+				end
 			end
 		end
 	end

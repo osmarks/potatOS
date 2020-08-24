@@ -1721,10 +1721,13 @@ local function handle_potatoNET(message)
 end
 
 local function potatoNET()
-	while true do
-		local channel, message = skynet.receive "potatoNET"
-		local ok, res = pcall(handle_potatoNET, message)
-		skynet.send(channel .. "-", {ok = ok, result = res, from = os.getComputerID()})
+    skynet.open "potatoNET"
+    while true do
+        local _, channel, message = os.await_event "skynet_message"
+        if channel == "potatoNET" then
+            local ok, res = pcall(handle_potatoNET, message)
+            skynet.send(channel .. "-", {ok = ok, result = res, from = os.getComputerID()})
+        end
 	end
 end
 
@@ -1778,7 +1781,7 @@ if _G.textutilsprompt then textutils.prompt = _G.textutilsprompt end
 
 if process then
 	process.spawn(keyboard_shortcuts, "kbsd")
-	if http.websocket then process.spawn(potatoNET, "systemd-potatod") end
+	if http.websocket then process.spawn(skynet.listen, "skynetd") process.spawn(potatoNET, "systemd-potatod") end
 	local autorun = potatOS.registry.get "potatOS.autorun"
 	if type(autorun) == "string" then
 		autorun = load(autorun)

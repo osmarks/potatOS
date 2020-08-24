@@ -956,7 +956,6 @@ local function run_with_sandbox()
 	--	if fs.exists "lib/bigfont" then os.loadAPI "lib/bigfont" end
 	if fs.exists "lib/gps.lua" then 
 		os.loadAPI "lib/gps.lua"
-		_G.gps = _G.potatogps
 	end
 	
 	-- Hook up the debug registry to the potatOS Registry.
@@ -1142,11 +1141,6 @@ local function run_with_sandbox()
 		]]
 		--debug = (potatOS or external_env).debug -- too insecure, this has been removed, why did I even add this.
 	}
-	
-	_G.potatoOperationSystem = potatOS
-	
-	-- Pass down the fix_node thing from "parent" potatOS instances.
-	if global_potatOS then potatOS.fix_node = global_potatOS.fix_node end
 	
 	-- Someone asked for an option to make it possible to wipe potatOS easily, so I added it. The hedgehogs are vital to its operation.
 	-- See https://hackage.haskell.org/package/hedgehog-classes for further information.
