@@ -1391,6 +1391,10 @@ end
 		]]
 	}
 	
+	for _, file in pairs(fs.list "bin") do
+		FS_overlay[fs.combine("rom/programs", file)] = fproxy(fs.combine("bin", file))
+	end
+
 	local osshutdown = os.shutdown
 	local osreboot = os.reboot
 	
