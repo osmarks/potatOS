@@ -528,10 +528,10 @@ local function process_disk(disk_side)
 		local sig_raw = fread(sig_file)
 		local sig
 		if sig_raw:find "{" then sig = textutils.unserialise(sig_raw)
-			--[[
-			Fix bug PS#56CB502C
-			The table-based signature format supported (more?) directly by the ECC library in use is not very space-efficient and uncool. This makes it support hexadecimal-format signatures, which look nicer.
-			]]
+		--[[
+		Fix bug PS#56CB502C
+		The table-based signature format supported (more?) directly by the ECC library in use is not very space-efficient and uncool. This makes it support hexadecimal-format signatures, which look nicer.
+		]]
 		else sig = unhexize(sig_raw) end
 		disk.eject(disk_side)
 		if verify(code, sig) then
