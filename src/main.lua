@@ -16,7 +16,13 @@ This license also extends to other PotatOS components or bundled software owned 
 
 term.clear()
 term.setCursorPos(1, 1)
-term.setTextColor(colors.lime)
+if term.isColor() then
+	term.setTextColor(colors.lightBlue)
+else
+	term.setTextColor(colors.white)
+end
+term.setCursorBlink(false)
+print "Loading..."
 
 if settings.get "potatOS.rph_mode" == true then 
 	print "PotatOS Rph Compliance Mode: Enabled."
@@ -142,9 +148,6 @@ local secureish_randomseed = math.random(0xFFFFFFF)
 
 local version = "TuberOS"
 local versions = {"ErOSion", "TuberOS", "TuberculOSis", "mOSaic", "pOSitron", "ViscOSity", "AtmOSphere", "AsbestOS", "KerOSene", "ChromOSome", "GlucOSe", "MitOSis", "PhotOSynthesis", "PhilOSophy", "ApOStrophe", "AerOSol", "DisclOSure", "PhOSphorous", "CompOSition", "RepOSitory", "AlbatrOSs", "StratOSphere", "GlOSsary", "TranspOSition", "ApotheOSis", "HypnOSis", "IdiOSyncrasy", "OStrich", "ErOS", "ExplOSive", "OppOSite", "RhinocerOS", "AgnOStic", "PhOSphorescence", "CosmOS", "IonOSphere", "KaleidOScope", "cOSine", "OtiOSe", "GyrOScope", "MacrOScopic", "JuxtapOSe", "ChaOS", "ThanatOS", "AvocadOS", "IcOSahedron", "pOSsum", "albatrOSs", "crOSs", "mOSs", "purpOSe"}
-
-term.clear()
-term.setCursorBlink(false)
 
 -- Utility functions and stuff
 
@@ -754,7 +757,11 @@ function _G.uninstall(cause)
 	--pcall(fs.move, filename, newpath)
 	--pcall(fs.delete, filename)
 	--end
-	pcall(fs.delete, "startup")
+	-- we no longer have a convenient `files` table in the source, so use the latest manifest instead
+	for file in pairs(registry.get "potatOS.current_manifest.files") do
+		pcall(fs.delete, file)
+		print("deleted", file)
+	end
 	pcall(fs.delete, "startup.lua")
 	print "Press any key to continue."
 	os.pullEvent "key"
@@ -1540,7 +1547,7 @@ return function(...)
 	end
 	
 	if not polychoron or not fs.exists "potatobios.lua" or not fs.exists "autorun.lua" then -- Polychoron not installed, so PotatOS Tau isn't.
-		install()
+		install(true)
 	else
 		process.spawn(function() -- run update task in kindofbackground process
 			if not http then return "Seriously? Why no HTTP?" end
