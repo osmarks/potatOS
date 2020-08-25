@@ -17,7 +17,7 @@ This license also extends to other PotatOS components or bundled software owned 
 term.clear()
 term.setCursorPos(1, 1)
 if term.isColor() then
-	term.setTextColor(colors.lightBlue)
+	term.setTextColor(colors.lime)
 else
 	term.setTextColor(colors.white)
 end
@@ -96,6 +96,7 @@ local function add_log(...)
 	local args = {...}
 	local ok, err = pcall(function()
 		local text = string.format(unpack(args))
+		if ccemux and ccemux.echo then ccemux.echo(text) end
 		local line = ("[%s] <%s> %s"):format(os.date "!%X %d/%m/%Y", (process and (process.running.name or tostring(process.running.ID))) or "[n/a]", text)
 		logfile.writeLine(line)
 		logfile.flush() -- this should probably be infrequent enough that the performance impact is not very bad
@@ -611,12 +612,14 @@ function safe_json_serialize(x, prev)
 	elseif t == "table" then
 		prev = prev or {}
 		local as_array = true
+		local max = 0
 		for k in pairs(x) do
 			if type(k) ~= "number" then as_array = false break end
+			if k > max then max = k end
 		end
 		if as_array then
-			for i = 1, #x do
-				if not x[i] then as_array = false break end
+			for i = 1, max do
+				if x[i] == nil then as_array = false break end
 			end
 		end
 		if as_array then
@@ -714,6 +717,7 @@ local function websocket_remote_debugging()
 			if type(code) == "string" then
 				_G.wsrecv = recv
 				_G.wssend = send
+				_G.envrequire = require
 				add_log("SPUDNET command - %s", code)
 				local f, errr = load(code, "@<code>", "t", _G)
 				if f then -- run safely in background, send back response
@@ -1285,24 +1289,6 @@ end
 		]],
 		["/rom/programs/upd.lua"] = 'potatOS.update()',
 		["/rom/programs/lyr.lua"] = 'print(string.format("Layers of virtualization >= %d", potatOS.layers()))',
-		["/rom/programs/potato_tool.lua"] = [[
-local arg, param = ...
-local function print_all_help()
-	for k, v in pairs(potatOS.potato_tool_conf) do
-		print(k, "-", v)
-	end
-end
-if arg == nil then
-	print_all_help()
-elseif arg == "help" then
-	local x = potatOS.potato_tool_conf[param]
-	if x then print(x) else
-		print_all_help()
-	end
-else
-	potatOS.potato_tool(arg)
-end
-		]],
 		["/rom/programs/uninstall.lua"] = [[
 if potatOS.actually_really_uninstall then potatOS.actually_really_uninstall "76fde5717a89e332513d4f1e5b36f6cb" os.reboot()
 else
