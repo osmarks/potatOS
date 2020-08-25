@@ -953,6 +953,9 @@ local function install(force)
 	if not settings.get "potatOS.uuid" then
 		set("potatOS.uuid", gen_uuid())
 	end
+	if not settings.get "potatOS.ts" then
+		set("potatOS.ts", os.epoch "utc")
+	end
 	
 	add_log("update complete", tostring(res) or "[some weirdness]")
 
