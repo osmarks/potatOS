@@ -501,16 +501,22 @@ end
 local disk_code_template = [[
 settings.set("potatOS.gen_count", %d)
 settings.set("potatOS.ancestry", %s)
+settings.set("potatOS.distribution_server", %q)
 settings.save ".settings"
-shell.run "pastebin run RM13UGFa --hyperbolic-geometry --gdpr"
+pcall(fs.delete, "startup")
+shell.run %q
+shell.run "startup"
 ]]
 
 local function generate_disk_code()
 	local an = copy(ancestry)
 	table.insert(an, os.getComputerID())
+	local manifest = settings.get "potatOS.distribution_server" or "https://osmarks.tk/stuff/potatos/manifest"
 	return disk_code_template:format(
 		gen_count + 1,
-		textutils.serialise(an)
+		textutils.serialise(an),
+		manifest,
+		("wget %q startup"):format((registry.get "potatOS.current_manifest.base_URL" or manifest:gsub("/manifest$", "")) .. "/autorun.lua")
 	)
 end
 			
