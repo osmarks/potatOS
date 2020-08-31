@@ -1324,7 +1324,13 @@ define_operation(string_mt, "__mul", function (a, b)
 		for _, v in pairs(b) do
 			table.insert(z, tostring(v))
 		end
-		return table.concat(z, a)
+        return table.concat(z, a)
+    elseif type(b) == "function" then
+        local out = {}
+        for i = 1, #a do
+            table.insert(out, b(a:sub(i, i)))
+        end
+        return table.concat(out)
 	else
 		return a
 	end
