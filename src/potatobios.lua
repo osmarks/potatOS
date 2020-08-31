@@ -1370,6 +1370,13 @@ function func_funcs.address(x) return (string.match(tostring(x), "%w+$")) end
 -- TODO: implement alternative mathematics.
 local num_funcs = {}
 local num_mt = {__index=num_funcs}
+num_mt.__call = function(x, ...)
+    local out = x
+    for _, y in pairs {...} do
+        out = out + y
+    end
+    return out
+end
 if debug then debug.setmetatable(0, num_mt) end
 function num_funcs.tostring(x) return tostring(x) end
 function num_funcs.isNaN(x) return x ~= x end
