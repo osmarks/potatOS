@@ -1788,6 +1788,10 @@ if potatOS.registry.get "potatOS.hide_peripherals" then
 	function peripheral.getNames() return {} end
 end
 
+if potatOS.registry.get "potatOS.immutable_global_scope" then
+    setmetatable(_G, { __newindex = function(_, x) error(("cannot set _G[%q] - _G is immutable"):format(tostring(x)), 0) end })
+end
+
 if meta then _G.meta = meta.new() end
 
 if _G.textutilsprompt then textutils.prompt = _G.textutilsprompt end
