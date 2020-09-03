@@ -644,9 +644,9 @@ function safe_json_serialize(x, prev)
     elseif t == "boolean" then
 		return tostring(x)
 	elseif x == nil then
-		return nil
+		return "null"
 	else
-        return ("%q"):format(tostring(x))
+        return json.encode(tostring(x))
 	end
 end
 
@@ -849,7 +849,8 @@ local function download_files(manifest_data, needed_files)
 			local h = assert(http.get(url, nil, true))
 			local x = h.readAll()
 			h.close()
-			if manifest_data.files[file] ~= hexize(sha256(x)) then error("hash mismatch on " .. file .. " - " .. url) end
+			local hexsha = hexize(sha256(x))
+			if manifest_data.files[file] ~= hexsha then error(("hash mismatch on %s %s (expected %s, got %s)"):format(file, url, manifest_data.files[file], hexsha)) end
 			fwrite(file, x)
 			count = count + 1
 		end)
@@ -1215,18 +1216,22 @@ local function run_with_sandbox()
 print("Short hash", potatOS.build)
 print("Full hash", potatOS.full_build)
 local mfst = potatOS.registry.get "potatOS.current_manifest"
-print("Counter", mfst.build)
-print("Built at (local time)", os.date("%Y-%m-%d %X", mfst.timestamp))
-print("Downloaded from", mfst.manifest_URL)
-local verified = mfst.verified
-if verified == nil then verified = "false [no signature]"
-else
-	if verified == true then verified = "true"
+if mfst then
+	print("Counter", mfst.build)
+	print("Built at (local time)", os.date("%Y-%m-%d %X", mfst.timestamp))
+	print("Downloaded from", mfst.manifest_URL)
+	local verified = mfst.verified
+	if verified == nil then verified = "false [no signature]"
 	else
-		verified = ("false %s"):format(tostring(mfst.verification_error))
+		if verified == true then verified = "true"
+		else
+			verified = ("false %s"):format(tostring(mfst.verification_error))
+		end
 	end
+	print("Signature verified:", verified)
+else
+	print "Manifest not found in registry. Extended data unavailable."
 end
-print("Signature verified:", verified)
 		]],
 		["/rom/programs/id.lua"] = [[
 print("ID", os.getComputerID())

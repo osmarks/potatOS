@@ -209,6 +209,7 @@ This incident has been reported.]], thing, category, category_descriptions[categ
 	end
 	return true
 end
+local check_safe = potatOS.check_safe
 
 -- This flag is set... near the end of boot, or something... to enable code safety checking.
 local boot_done = false
@@ -230,7 +231,7 @@ function load(code, file, ...)
 		return function() return ret end
 	end
 	if boot_done then 
-		local ok, replace_with = potatOS.check_safe(code)
+		local ok, replace_with = check_safe(code)
 		if not ok then return replace_with end
 	end
 	if potatOS.registry.get "potatOS.protocol_epsilon" then
@@ -1788,13 +1789,13 @@ if potatOS.registry.get "potatOS.hide_peripherals" then
 	function peripheral.getNames() return {} end
 end
 
-if potatOS.registry.get "potatOS.immutable_global_scope" then
-    setmetatable(_G, { __newindex = function(_, x) error(("cannot set _G[%q] - _G is immutable"):format(tostring(x)), 0) end })
-end
-
 if meta then _G.meta = meta.new() end
 
 if _G.textutilsprompt then textutils.prompt = _G.textutilsprompt end
+
+if potatOS.registry.get "potatOS.immutable_global_scope" then
+    setmetatable(_G, { __newindex = function(_, x) error(("cannot set _G[%q] - _G is immutable"):format(tostring(x)), 0) end })
+end
 
 if process then
 	process.spawn(keyboard_shortcuts, "kbsd")

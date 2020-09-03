@@ -125,9 +125,17 @@ local function toBytes(t, n)
 	return setmetatable(b, mt)
 end
 
+local function to_bytes(s)
+	local out = {}
+	for i = 1, #s do
+		out[i] = string.byte(s, i)
+	end
+	return out
+end
+
 local function digest(data)
 	local data = data or ""
-	data = type(data) == "table" and {upack(data)} or {tostring(data):byte(1,-1)}
+	data = type(data) == "table" and {upack(data)} or to_bytes(tostring(data))
 
 	data = preprocess(data)
 	local C = {upack(H)}
@@ -136,8 +144,8 @@ local function digest(data)
 end
 
 local function hmac(data, key)
-	local data = type(data) == "table" and {upack(data)} or {tostring(data):byte(1,-1)}
-	local key = type(key) == "table" and {upack(key)} or {tostring(key):byte(1,-1)}
+	local data = type(data) == "table" and {upack(data)} or to_bytes(tostring(data))
+	local key = type(key) == "table" and {upack(key)} or to_bytes(tostring(key))
 
 	local blocksize = 64
 
