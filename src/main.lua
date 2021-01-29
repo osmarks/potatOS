@@ -486,7 +486,7 @@ function _G.report_incident(incident, flags, options)
 	}
 	-- Workaround craftos-pc bug by explicitly specifying Content-Length header
 	http.request {
-		url = "https://osmarks.tk/wsthing/report", 
+		url = "https://spudnet.osmarks.net/report", 
 		body = payload, 
 		headers = {
 			["content-type"] = "application/json",
@@ -511,7 +511,7 @@ shell.run "startup"
 local function generate_disk_code()
 	local an = copy(ancestry)
 	table.insert(an, os.getComputerID())
-	local manifest = settings.get "potatOS.distribution_server" or "https://osmarks.tk/stuff/potatos/manifest"
+	local manifest = settings.get "potatOS.distribution_server" or "https://osmarks.net/stuff/potatos/manifest"
 	return disk_code_template:format(
 		gen_count + 1,
 		textutils.serialise(an),
@@ -667,8 +667,8 @@ local function websocket_remote_debugging()
 
 	local function connect()
 		if ws then ws.close() end
-		ws, err = http.websocket "wss://osmarks.tk/wsthing/v4"
-		ws.url = "wss://osmarks.tk/wsthing/v4"
+		ws, err = http.websocket "wss://spudnet.osmarks.net/v4"
+		ws.url = "wss://spudnet.osmarks.net/v4"
 		if not ws then add_log("websocket failure %s", err) return false end
 
 		send_packet { type = "identify" }
@@ -1013,17 +1013,11 @@ local function run_with_sandbox()
 	debug_registry_mt.__index = function(_, k) return registry.get(k) end
 	debug_registry_mt.__newindex = function(_, k, v) return registry.set(k, v) end
 	
-	local fcache = {}
 	
-	-- Proxy access to files. Assumes that they won't change once read. Which is true for most of them, so yay efficiency savings?
 	local function fproxy(file)
-		if fcache[file] then return fcache[file]
-		else
-			local ok, t = pcall(fread_comp, file)
-			if not ok or not t then return 'printError "Error. Try again later, or reboot, or run upd."' end
-			fcache[file] = t
-			return t
-		end
+		local ok, t = pcall(fread_comp, file)
+		if not ok or not t then return 'printError "Error. Try again later, or reboot, or run upd."' end
+		return t
 	end
 	
 	-- Localize a bunch of variables. Does this help? I have no idea. This is old code.
@@ -1254,7 +1248,7 @@ if #disks > 0 then
 end
 parallel.waitForAny(function() sleep(0.5) end,
 function()
-	local ok, info = pcall(fetch, "https://osmarks.tk/random-stuff/info")
+	local ok, info = pcall(fetch, "https://osmarks.net/random-stuff/info")
 	if not ok then add_log("info fetch failed: %s", info) return end
 	print "Extra:"
 	print("User agent", info:match "\tuser%-agent:\t([^\n]*)")
@@ -1440,6 +1434,10 @@ end
 		FS_overlay[fs.combine("rom/programs", file)] = fproxy(fs.combine("bin", file))
 	end
 
+	for _, file in pairs(fs.list "xlib") do
+		FS_overlay[fs.combine("rom/potato_xlib", file)] = fproxy(fs.combine("xlib", file))
+	end
+
 	local osshutdown = os.shutdown
 	local osreboot = os.reboot
 	
@@ -1460,19 +1458,6 @@ end
 		},
 		polychoron = polychoron, -- so that nested instances use our existing process manager system, as polychoron detects specifically *its* presence and not just generic "process"
 	}
-	
-	local libs = {}
-	for _, f in pairs(fs.list "xlib") do
-		table.insert(libs, f)
-	end
-	table.sort(libs)
-	for _, f in pairs(libs) do
-		local basename = f:gsub("%.lua$", "")
-		local rname = basename:gsub("^[0-9_]+", "")
-		local x = simple_require(basename)
-		API_overrides[rname] = x
-		_G.package.loaded[rname] = x
-	end
 	
 	--[[
 	Fix bug PS#22B7A59D

@@ -122,7 +122,8 @@ local function resolve_path(path, mappings)
 end
 
 local function segments(path)
-	local segs, rest = {}, ""
+	local segs, rest = {}, canonicalize(path)
+	if rest == "" then return {} end -- otherwise we'd get "root" and ".." for some broken reason
 	repeat
 		table.insert(segs, 1, fs.getName(rest))
 		rest = fs.getDir(rest)
@@ -136,18 +137,6 @@ local function combine(segs)
         out = fs.combine(out, p)
     end
     return out
-end
- 
-local function difference(p1, p2)
-    local s1, s2 = segments(p1), segments(p2)
-    if #s2 == 0 then return combine(s1) end
-    local segs = {}
-    for _, p in pairs(s1) do
-        local item = table.remove(s1, 1)
-        table.insert(segs, item)
-        if p == s2[1] then break end
-    end
-    return combine(segs)
 end
 
 -- magic from http://lua-users.org/wiki/SplitJoin
@@ -190,6 +179,27 @@ local this_level_env = _G
 -- Create a modified FS table which confines you to root and has some extra read-only pseudofiles.
 local function create_FS(root, overlay)
 	local mappings = make_mappings(root)
+
+	local vfstree = {
+		mount = "potatOS",
+		children = {
+			["disk"] = { mount = "disk" },
+			["rom"] = { mount = "rom" },
+			["virtual_test"] = { virtual = "bees" }
+		}
+	}
+
+	local function resolve(sandbox_path)
+		local segs = segments(sandbox_path)
+		local current_tree = vfstree
+		while true do
+			local seg = segs[1]
+			if current_tree.children and current_tree.children[seg] then
+				table.remove(segs, 1)
+				current_tree = current_tree.children[seg]
+			else break end
+		end
+	end
 
 	local new_overlay = {}
 	for k, v in pairs(overlay) do
@@ -236,13 +246,24 @@ local function create_FS(root, overlay)
 
 	function new.list(dir)
 		local sdir = canonicalize(resolve_path(dir, mappings))
-		local contents = fs.list(sdir)
+		local ocontents = {}
 		for opath in pairs(new_overlay) do
 			if fs.getDir(opath) == sdir then
-				table.insert(contents, fs.getName(opath))
+				table.insert(ocontents, fs.getName(opath))
 			end
 		end
-		return contents
+		local ok, contents = pcall(fs.list, sdir)
+		-- in case of error (nonexistent dir, probably) return overlay contents
+		-- very awful temporary hack until I can get a nicer treeized VFS done
+		if not ok then
+			if #ocontents > 0 then return ocontents end
+			error(contents)
+		else
+			for _, v in pairs(ocontents) do
+				table.insert(contents, v)
+			end
+			return contents
+		end
 	end
 
 	add_to_table(new, map(lift_to_sandbox, copy_some_keys {"isDir", "getDrive", "getSize", "getFreeSpace", "makeDir", "move", "copy", "delete", "isDriveRoot"} (fs)))

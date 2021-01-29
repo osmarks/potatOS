@@ -18,6 +18,7 @@ if process then
                 tostring(event[4]),
                 tostring(os.epoch("utc")),
                 tostring({}),
+                math.random()
             }
             entropy = table.concat(entropy, "|")
             

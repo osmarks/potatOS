@@ -7,6 +7,8 @@ PotatOS is a groundbreaking "Operating System" for [ComputerCraft](https://www.c
 PotatOS Hypercycle is not entirely finished, and some features are currently broken or missing.
 If you want more "stability", consider [PotatOS Tau](https://pastebin.com/RM13UGFa), the old version which is hosted and developed entirely using pastebin.
 
+You obviously want to install it now, so do this: `pastebin run 7HSiHybr`.
+
 ## Features
 
 Unlike most "OS"es for CC (primarily excluding Opus OS, which is actually useful, and interesting "research projects" like Vorbani), which are merely a pointless GUI layer over native CraftOS, PotatOS incorporates many innovative features:

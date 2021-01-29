@@ -1,7 +1,7 @@
 local CBOR = require "cbor"
 
 local skynet = {
-	server = "wss://osmarks.tk/skynet2/connect/",
+	server = "wss://skynet.osmarks.net/connect/",
 	socket = nil,
 	open_channels = {},
 	CBOR = CBOR

@@ -101,7 +101,7 @@ local secure_events = {
 Fix for bug PS#D7CD76C0
 As "sandboxed" code can still queue events, there was previously an issue where SPUDNET messages could be spoofed, causing arbitrary code to be executed in a privileged process.
 This... kind of fixes this? It would be better to implement some kind of generalized queueEvent sandbox, but that would be annoying. The implementation provided by Kan181/6_4 doesn't seem very sound.
-Disallow evil people from spoofing the osmarks.tk website. Should sort of not really fix one of the sandbox exploits.
+Disallow evil people from spoofing the osmarks.net website. Should sort of not really fix one of the sandbox exploits.
 
 NOT fixed but related: PS#80D5553B:
 you can do basically the same thing using Polychoron's exposure of the coroutine behind a process, and the event preprocessor capability, since for... some reason... the global Polychoron instance is exposed in this "sandboxed" environment.
@@ -240,7 +240,17 @@ function load(code, file, ...)
 		for k, x in pairs(load_log) do f.write(x[2] .. ":\n" .. x[1] .. "\n") end
 		f.close()
 	end
-	set_last_loaded(code)
+    set_last_loaded(code)
+    if code:match "^///PS:heavlisp\n" then
+        -- load in heavlisp mode
+        if not heavlisp then return false, "heavlisp loader unavailable" end
+        local ok, ast = pcall(function() return heavlisp.into_ast(heavlisp.tokenize(code)) end)
+        if not ok then return false, ast end
+        return function(imports)
+            imports = imports or {}
+            return heavlisp.interpret(ast, imports)
+        end
+    end
 	return real_load(code, file, ...)
 end
 do_something "load"
@@ -923,6 +933,58 @@ if commands and fs.isDir( "rom/apis/command" ) then
     end
 end
 
+-- library loading is now done in-sandbox, enhancing security
+-- make up our own require for some bizarre reason
+local function try_paths(root, paths)
+	for _, path in pairs(paths) do
+		local fpath = fs.combine(root, path)
+		if fs.exists(fpath) and not fs.isDir(fpath) then
+			return fpath
+		end
+	end
+	return false
+end
+
+_G.package = {
+	preload = {},
+	loaded = {}
+}
+
+function simple_require(package)
+	if _G.package.loaded[package] then return _G.package.loaded[package] end
+	if _G.package.preload[package] then
+		local pkg = _G.package.preload[package](_G.package)
+      	_G.package.loaded[package] = pkg
+      	return pkg
+	end
+	local npackage = package:gsub("%.", "/")
+	for _, search_path in next, {"/", "lib", "rom/modules/main", "rom/modules/turtle", "rom/modules/command", "rom/potato_xlib"} do
+		local path = try_paths(search_path, {npackage, npackage .. ".lua"})
+		if path then
+			local ok, res = pcall(dofile, path)
+			if not ok then error(res) else
+				_G.package.loaded[package] = res
+				return res
+			end
+		end
+	end
+	error(package .. " not found")
+end
+_G.require = simple_require
+
+local libs = {}
+for _, f in pairs(fs.list "rom/potato_xlib") do
+    table.insert(libs, f)
+end
+table.sort(libs)
+for _, f in pairs(libs) do
+    local basename = f:gsub("%.lua$", "")
+    local rname = basename:gsub("^[0-9_]+", "")
+    local x = simple_require(basename)
+    _G[rname] = x
+    _G.package.loaded[rname] = x
+end
+
 if bAPIError then
     print( "Press any key to continue" )
     os.pullEvent( "key" )
@@ -1044,7 +1106,7 @@ end
 if potatOS.registry.get "potatOS.seen_terms_notice" == nil or potatOS.registry.get "potatOS.seen_terms_notice" == false then
 	term.setCursorPos(1, 1)
 	potatOS.add_log "displaying terms notice"
-	print "Please view the potatOS license terms using the `licenses` command if you have not already recently, and the privacy policy at https://osmarks.tk/p3.html (the copy shipped with PotatOS Licenses is outdated). Press the Any key to continue."
+	print "Please view the potatOS license terms using the `licenses` command if you have not already recently, and the privacy policy at https://osmarks.net/p3.html (the copy shipped with PotatOS Licenses is outdated). Press the Any key to continue."
 	potatOS.registry.set("potatOS.seen_terms_notice", true)
 	os.pullEvent "key"
 end
@@ -1428,19 +1490,19 @@ function _G.potatOS.lorem()
 	return depara(json.decode(new).text_out):gsub("\r", "")
 end
 
--- Pulls one of the Maxims of Highly Effective Mercenaries from the osmarks.tk random stuff API
+-- Pulls one of the Maxims of Highly Effective Mercenaries from the osmarks.net random stuff API
 function _G.potatOS.maxim()
-	return fetch "https://osmarks.tk/random-stuff/maxim/"
+	return fetch "https://osmarks.net/random-stuff/maxim/"
 end
 
 -- Backed by the Linux fortunes program.
 function _G.potatOS.fortune()
-	return fetch "https://osmarks.tk/random-stuff/fortune/"
+	return fetch "https://osmarks.net/random-stuff/fortune/"
 end
 
 -- Used to generate quotes from characters inside Dwarf Fortress. No longer functional as that was taking way too much CPU time.
 function _G.potatOS.dwarf()
-	return fetch "https://osmarks.tk/dwarf/":gsub("—", "-")
+	return fetch "https://osmarks.net/dwarf/":gsub("—", "-")
 end
 
 -- Code for PotatoNET chat program. Why is this in potatoBIOS? WHO KNOWS.

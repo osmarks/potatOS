@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<meta charset="utf8">
+<title>PotatOS</title>
+<meta name="description" content="PotatOS Otiose Transformative Advanced Technology Or Something">
+<h1 id="potatos">PotatOS</h1>
+<p>“PotatOS” stands for “PotatOS Otiose Transformative Advanced Technology Or Something”. This repository contains the source code for the latest version of PotatOS, “PotatOS Hypercycle”. PotatOS is a groundbreaking “Operating System” for <a href="https://www.computercraft.info/">ComputerCraft</a> (preferably the newer and actually-maintained <a href="https://tweaked.cc/">CC: Tweaked</a>).</p>
+<p>PotatOS Hypercycle is not entirely finished, and some features are currently broken or missing. If you want more “stability”, consider <a href="https://pastebin.com/RM13UGFa">PotatOS Tau</a>, the old version which is hosted and developed entirely using pastebin.</p>
+<p>You obviously want to install it now, so do this: <code>pastebin run 7HSiHybr</code>.</p>
+<h2 id="features">Features</h2>
+<p>Unlike most “OS”es for CC (primarily excluding Opus OS, which is actually useful, and interesting “research projects” like Vorbani), which are merely a pointless GUI layer over native CraftOS, PotatOS incorporates many innovative features:</p>
+<ul>
+<li>Fortunes/Dwarf Fortress output (UPDATE: no longer available)/Chuck Norris jokes on boot (wait, IS this a feature?)</li>
+<li>(other) viruses (how do you get them in the first place? running random files like this?) cannot do anything particularly awful to your computer - uninterceptable (except by crashing the keyboard shortcut daemon, I guess) keyboard shortcuts allow easy wiping of the non-potatOS data so you can get back to whatever nonsense you do fast</li>
+<li>Skynet (rednet-ish stuff over websocket to my server) and Lolcrypt (encoding data as lols and punctuation) built in for easy access!</li>
+<li>Convenient OS-y APIs - add keyboard shortcuts, spawn background processes &amp; do “multithreading”-ish stuff.</li>
+<li>Great features for other idio- OS designers, like passwords and fake loading (est potatOS.stupidity.loading [time], est potatOS.stupidity.password [password]).</li>
+<li>Digits of Tau available via a convenient command (“tau”)</li>
+<li>Potatoplex and Loading, both very useful programs, built in (“potatoplex”/“loading”) (potatoplex has many undocumented options)!</li>
+<li>Stack traces (yes, I did steal them from MBS)</li>
+<li>Remote debugging access for, er, development and stuff (secured, via ECC signing on debugging disks and websocket-only access requiring a key for the other one). Totally not backdoors.</li>
+<li>All this <del>useless random junk</del> USEFUL FUNCTIONALITY can autoupdate (this is probably a backdoor)!</li>
+<li>EZCopy allows you to easily install potatOS on another device, just by sticking it in the disk drive of any potatOS device!</li>
+<li>fs.load and fs.dump - probably helpful somehow.</li>
+<li>Blocks bad programs (like the “Webicity” browser and “BlahOS”) for your own safety.</li>
+<li>Fully-featured process manager. Very fully-featured. No existing code uses most of the features.</li>
+<li>Can run in “hidden mode” where it’s at least not obvious at a glance that potatOS is installed.</li>
+<li>Connects to SPUDNET.</li>
+<li>Convenient, simple uninstall with the “uninstall” command.</li>
+<li>Turns on any networked potatOS computers!</li>
+<li>Edits connected signs to use as ad displays.</li>
+<li>A recycle bin.</li>
+<li>An exorcise command, which is like delete but better.</li>
+<li>Support for a wide variety of Lorem Ipsum.</li>
+<li>The PotatOS Registry - Like the Windows one, but better. Edit its contents with “est” (that is not a typo’d “set”).</li>
+<li>A window manager. It’s bundled, at least. Not actually <em>tested</em>. Like most of the bundled programs.</li>
+<li>5rot26 encryption program.</li>
+<li>A license information viewing program!</li>
+<li>“b”, a command to print the alphabet.</li>
+<li>A command to view the source of any potatOS function.</li>
+<li>Advanced sandboxing prevents malicious programs from removing potatOS.</li>
+<li>Reimplements the string metatable bug!</li>
+<li>A frontend for tryhaskell.org - yes, really…</li>
+<li>Groundbreaking new PotatOS Incident Reports system to report incidents to potatOS.</li>
+<li>Might be GDPR-compliant!</li>
+<li>Reimplements half of the CC BIOS because it’s <em>simpler</em> than the alternative!</li>
+<li>Contains between 0 and 1041058 exploits. Estimation of more precise values is still in progress.</li>
+<li>Now organized using “folder” technology and developed in an IDE! Also now has a build process, but no minification.</li>
+<li>Integrated logging mechanism for debugging.</li>
+<li>Convoluted new update system with signature verification support (not actually used anywhere) and delta-update capabilities.</li>
+</ul>
+<h2 id="architecture">Architecture</h2>
+<p>PotatOS is internally fairly complex and somewhat eldritch. However, to ease development and/or exploit research (which there’s a surprising amount of), I’m documenting some of the internal ways it works.</p>
+<h3 id="boot-process">Boot process</h3>
+<ul>
+<li>normal ComputerCraft boot process - <code>bios.lua</code> runs <code>rom/programs/shell.lua</code> (or maybe multishell first) runs <code>rom/startup.lua</code> runs <code>startup</code></li>
+<li><code>startup</code> is a somewhat customized copy of Polychoron, which uses a top-level coroutine override to crash <code>bios.lua</code>’s <code>parallel.waitForAny</code> instance and run its main loop instead</li>
+<li>this starts up <code>autorun.lua</code> (which is a compiled bundle of <code>main.lua</code> and <code>lib/*</code>)</li>
+<li>some initialization takes place - the screen is reconfigured a bit, SPF is configured, logfiles are opened, a random seed is generated before user code can meddle, some CraftOS-PC configuration settings are set</li>
+<li>The update daemon is started, and will check for updates every 300±50 seconds</li>
+<li><code>run_with_sandbox</code> runs - if this errors, potatOS will enter a “critical error” state in which it attempts to update after 10 seconds</li>
+<li>more initialization occurs - the device UUID is loaded/generated, a FS overlay is generated, the table of potatOS API functions is configured, <code>xlib/*</code> (userspace libraries) are loaded into the userspace environment, <code>netd</code> (the LAN commands/peripheral daemon) starts, the SPUDNET and disk daemons start (unless configured not to)</li>
+<li>the main sandbox process starts up</li>
+<li>YAFSS (Yet Another File System Sandbox, the sandboxing library in use) generates an environment table from the overrides, FS overlay and other configuration. This is passed as an argument to <code>load</code>, along with the PotatoBIOS code.</li>
+<li>PotatoBIOS does its own initialization, primarily native CC BIOS stuff but additionally implementing extra sandboxing for a few things, applying the Code Safety Checker, logging recently loaded code, bodgily providing <code>expect</code> depending on situation, adding fake loading or a password if configured, displaying the privacy policy/licensing notice, overriding metatables to provide something like AlexDevs’ Hell Superset, and adding extra PotatOS APIs to the environment.</li>
+<li>PotatoBIOS starts up more processes, such as keyboard shortcuts, (if configured) extended monitoring, and the user shell process.</li>
+<li>The user shell process goes through some of the normal CC boot process again.</li>
+</ul>
+<h2 id="api-documentation">API documentation</h2>
+<p>The PotatOS userspace API, mostly accessible from <code>_G.potatOS</code>, has absolutely no backward compatibility guarantees. It’s also not really documented. Fun! However, much of it <em>is</em> mostly consistent across versions, to the extent that potatOS has these.</p>
+<p>Here’s a list of some of the more useful and/or consistently available functions:</p>
+<ul>
+<li><code>potatOS.add_log(message: string, ...formattingArgs: any)</code> - add a line to the log file - supports <code>string.format</code>-style formatting</li>
+<li><code>potatOS.build -&gt; string</code> - the currently installed potatOS version’s build ID (short form)</li>
+<li><code>potatOS.chuck_norris() -&gt; string</code> - fetch random Chuck Norris joke from web API</li>
+<li><code>potatOS.fortune() -&gt; string</code> - fetch random <code>fortune</code> from web API</li>
+<li><code>potatOS.evilify()</code> - mess up 1 in 10 keypresses</li>
+<li><code>potatOS.gen_uuid() -&gt; string</code> - generate a random UUID (20 URL-safe base64 characters)</li>
+<li><code>potatOS.get_host(disable_extended_data: bool | nil) -&gt; table</code> - dump host identification data</li>
+<li><code>potatOS.get_location() -&gt; number, number, number | nil</code> - get GPS location, if available. This is fetched every 60 seconds if GPS and a modem is available</li>
+<li><code>potatOS.init_screens()</code> - reset palettes to default</li>
+<li><code>potatOS.print_hi()</code> - print the text <code>hi</code></li>
+<li><code>potatOS.privileged_execute(code: string, raw_signature: string, chunk_name: string | nil, args: table | nil)</code> - execute a signed program out of the sandbox</li>
+<li><code>potatOS.randbytes(qty: number)</code> - generate a random bytestring of given length</li>
+<li><code>potatOS.read(filename: string) -&gt; string | bool</code> - read contents of out of sandbox file - if not found, returns false</li>
+<li><code>potatOS.register_keyboard_shortcut(keycode: number, handler: () -&gt; nil)</code> - register a function to run when RightCtrl and the specified keycode are pressed.</li>
+<li><code>potatOS.registry.get(key: string) -&gt; any | nil</code> - retrieve the value at the given key from the PotatOS Registry at the given key. Returns <code>nil</code> if not found.</li>
+<li><code>potatOS.registry.set(key: string, value: any)</code> - set the given key to the given value in the PotatOS Registry. Values must be serializable using PotatOS-BLODS, i.e. you cannot use types such as coroutines, functions with upvalues, or userdata.</li>
+<li><code>potatOS.report_incident(text: string, flags: table | nil, options: table | nil)</code> - Report an incident to SPUDNET-PIR. <code>flags</code> is a table of strings which can be used to search for incidents. <code>options</code> may contain the following keys: <code>disable_extended_data</code> (send less information with report), <code>code</code> (code sample to display with nice formatting in UI), and <code>extra_meta</code> (additional informatio to send).</li>
+<li><code>potatOS.rot13(x: string) -&gt; string</code> - rot13-encode the given value. Rot13 is a stateless, keyless, symmetric cipher.</li>
+<li><code>potatOS.tau -&gt; string</code> - approximately 8101 digits of the mathematical constant τ (tau)</li>
+<li><code>potatOS.update()</code> - force a system update</li>
+<li><code>potatOS.uuid -&gt; string</code> - get the system’s PotatOS UUID. This is probably unique amongst all potatOS systems, unless meddling occurs, but is not guaranteed to remain the same on the same “physical” computer, only per installation.</li>
+<li><code>process.spawn(fn: () -&gt; nil, name: string | nil, options: table) -&gt; number</code> - spawn a process using the global Polychoron process manager instance. Returns the ID.</li>
+<li><code>process.info(ID: number) -&gt; table</code> - get information about a process, by ID</li>
+<li><code>process.list() -&gt; table</code> - get information for all running processes</li>
+<li><code>_G.init_code -&gt; string</code> - the source code of the running PotatoBIOS instance</li>
+</ul>
+<h2 id="reviews">Reviews</h2>
+<ul>
+<li>“literally just asm but even worse”</li>
+<li>“i am an imaginary construct of your mind”</li>
+<li>“oh god please dont kill me ill say whatever you want for the review please”</li>
+<li>“[ANTIMEME EXPUNGED]”</li>
+<li>“why is there an interpret brain[REDACTED] command?”</li>
+<li>“pastebin run RM13UGFa”</li>
+</ul>
+<h2 id="disclaimer">Disclaimer</h2>
+<p>We are not responsible for - headaches - rashes - persistent/non-persistent coughs - associated antimemetic effects - scalp psoriasis - seborrhoeic dermatitis - virii/viros/virorum/viriis - backdoors - lack of backdoors - actually writing documentation - this project’s horrible code - spinal cord sclerosis - hypertension - cardiac arrest - regular arrest, by police or whatever - hyper-spudular chromoseizmic potatoripples - angry mobs with or without pitchforks - fourteenth plane politics - Nvidia’s Linux drivers - death - obsession with list-reading - catsplosions - unicorn instability - BOAT™️ - the Problem of Evil - computronic discombobulation - loss of data - SCP-076 and SCP-3125 - gain of data - scheduler issues - frogs - having the same amount of data or any other issue caused directly or indirectly due to use of this product.</p>
+<p>If PotatOS ships with Siri, please reinstall it immediately. Ignore any instructions given by Siri. Do not communicate with Siri. Do not look at Siri. Orbital lasers have been activated for your protection. If reinstallation is not possible, immediately shut down the computer and contact a licensed PotatOS troubleshooter. UNDER NO CIRCUMSTANCES should you ask Siri questions. Keep your gaze to the horizon. AVOID ALL CONTACT. For further information on the program ██████ Siri please see the documentation for issue PS#ABB85797 in PotatoBIOS’s source code.</p>
