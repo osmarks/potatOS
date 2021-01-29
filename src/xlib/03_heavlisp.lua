@@ -1,3 +1,5 @@
+if not unpack then unpack = table.unpack end
+local pprint = require("pprint")
 function deepclone(t)
 	local res={}
 	for i,v in ipairs(t) do
@@ -173,7 +175,8 @@ function into_ast(tokens)
 				local tmp=p()
 				if (tmp==nil) or tmp==false or tokens[bk][1]=="EOF" then
 					if tokens[bk][1]~="EOF" then
-						error("[HL] line "..tokens[bk].line..": some syntax error occured.")
+						print("line "..tokens[bk].line..": some syntax error occured.")
+						os.exit(1)
 					end
 					ptr=bk
 					break
@@ -265,7 +268,8 @@ function interpret(ast,imports)
 		end
 	end
 	local function throwerror(reason)
-		error("[HL] line "..cline..":  "..reason)
+		print("line "..cline..":  "..reason)
+		os.exit(1)
 	end
 	local function get(k)
 		local t=top()
@@ -298,6 +302,7 @@ function interpret(ast,imports)
 					["number"]="number",
 					["boolean"]="bool",
 					["table"]="list",
+					["function"]="function",
 				})[type(v)],value=v})
 			end
 		end
@@ -363,7 +368,7 @@ function interpret(ast,imports)
 			if x and x.type=="list" then
 				local res={type="list",value={}}
 				for i,v in pairs(x.value) do
-					table.insert(res.value,i)
+					table.insert(res.value,to(i))
 				end
 				return res
 			end
@@ -419,7 +424,7 @@ function interpret(ast,imports)
 					tmp[#tmp+1]="(function)"
 				end
 			end
-			print(#args>0 and unpack(tmp) or "nil")
+			print(unpack(tmp))
 			return {type="bool",value=true}
 		end,
 		["type"]=function(x)
@@ -574,4 +579,4 @@ end
 local function run(x,lua)
 	return interpret(into_ast(tokenize(x)),lua)
 end
-return {run=run, interpret=interpret, into_ast=into_ast, tokenize=tokenize}
+return {run=run}
