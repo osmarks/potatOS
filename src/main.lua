@@ -668,8 +668,8 @@ local function websocket_remote_debugging()
 	local function connect()
 		if ws then ws.close() end
 		ws, err = http.websocket "wss://spudnet.osmarks.net/v4"
-		ws.url = "wss://spudnet.osmarks.net/v4"
 		if not ws then add_log("websocket failure %s", err) return false end
+		ws.url = "wss://spudnet.osmarks.net/v4"
 
 		send_packet { type = "identify" }
 		send_packet { type = "set_channels", channels = { "client:potatOS" } }
@@ -1248,11 +1248,9 @@ if #disks > 0 then
 end
 parallel.waitForAny(function() sleep(0.5) end,
 function()
-	local ok, info = pcall(fetch, "https://osmarks.net/random-stuff/info")
-	if not ok then add_log("info fetch failed: %s", info) return end
-	print "Extra:"
-	print("User agent", info:match "\tuser%-agent:\t([^\n]*)")
-	print("IP", info:match "IP\t([^\n]*)")
+	local ok, ip = pcall(fetch, "https://requestbin.net/ip")
+	if not ok then potatOS.add_log("IP fetch failed: %s", info) return end
+	print("IP address", ip)
 end
 )
 		]],
