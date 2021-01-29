@@ -1,3 +1,11 @@
+local path = {
+	"",
+	"/heavlisp_lib/",
+	"/rom/heavlisp_lib/",
+	"/lib/",
+	"/rom/lib/",
+	"lib/",
+}
 if not unpack then unpack = table.unpack end
 function deepclone(t)
 	local res={}
@@ -463,7 +471,11 @@ function interpret(ast,imports)
 				if y and y.type=="string" then
 					namespace=y.value.."_"
 				end
-				local f=io.open(x.value,"r")
+				local f
+				for _,v in ipairs(path) do
+					f=io.open(v..x.value,"r")
+					if f then break end
+				end
 				if not f then
 					return {type="bool",value=false}
 				end
