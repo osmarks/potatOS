@@ -1,5 +1,4 @@
 if not unpack then unpack = table.unpack end
-local pprint = require("pprint")
 function deepclone(t)
 	local res={}
 	for i,v in ipairs(t) do
