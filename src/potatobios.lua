@@ -220,7 +220,7 @@ local load_log = {}
 local set_last_loaded = potatOS.set_last_loaded
 potatOS.set_last_loaded = nil
 -- Check safety of code. Also log executed code if Protocol Epsilon diagnostics mode is enabled. I should probably develop a better format.
-function load(code, file, ...)
+function load(code, file, mode, env)
 	local start, end_, pxsig = code:find "%-%-%-PXSIG:([0-9A-Fa-f]+)\n"
 	if pxsig then
 		local rest = code:sub(1, start - 1) .. code:sub(end_ + 1)
@@ -247,11 +247,11 @@ function load(code, file, ...)
         local ok, ast = pcall(function() return heavlisp.into_ast(heavlisp.tokenize(code)) end)
         if not ok then return false, ast end
         return function(imports)
-            imports = imports or {}
+            imports = imports or env or {}
             return heavlisp.interpret(ast, imports)
         end
     end
-	return real_load(code, file, ...)
+	return real_load(code, file, mode, env)
 end
 do_something "load"
 
