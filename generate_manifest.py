@@ -22,8 +22,11 @@ if os.path.exists("./manifest"):
 def hash_file(path):
     file = open(path, "rb")
     h = hashlib.sha256()
-    while data := file.read(65536): h.update(data)
-    return h.hexdigest()
+    count = 0
+    while data := file.read(65536): 
+        h.update(data)
+        count += len(data)
+    return h.hexdigest(), count
 
 if args.sign:
     print("Signing update")
@@ -33,16 +36,21 @@ if args.sign:
     open("dist/update-key.hex", "w").write(pubkey)
 
 files = dict()
+sizes = dict()
 code = Path("./dist/")
 for path in code.glob("**/*"):
     if not path.is_dir():
-        files["/".join(path.parts[1:])] = hash_file(path)
+        hexhash, count = hash_file(path)
+        mpath = "/".join(path.parts[1:])
+        files[mpath] = hexhash
+        sizes[mpath] = count
 
 def deterministic_json_serialize(x):
     return json.dumps(x, sort_keys=True, separators=(",", ":"))
 
 manifest_data = deterministic_json_serialize({
     "files": files,
+    "sizes": sizes,
     "timestamp": int(datetime.datetime.now().timestamp()),
     "build": counter + 1,
     "description": args.description

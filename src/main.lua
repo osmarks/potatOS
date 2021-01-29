@@ -850,7 +850,8 @@ local function download_files(manifest_data, needed_files)
 			local x = h.readAll()
 			h.close()
 			local hexsha = hexize(sha256(x))
-			if manifest_data.files[file] ~= hexsha then error(("hash mismatch on %s %s (expected %s, got %s)"):format(file, url, manifest_data.files[file], hexsha)) end
+			if (manifest_data.sizes and manifest_data.sizes[file] and manifest_data.sizes[file] ~= #x) or manifest_data.files[file] ~= hexsha then 
+				error(("hash mismatch on %s %s (expected %s, got %s)"):format(file, url, manifest_data.files[file], hexsha)) end
 			fwrite(file, x)
 			count = count + 1
 		end)
@@ -911,7 +912,7 @@ local function process_manifest(url, force)
 	for file, hash in pairs(data.files) do
 		if fs.isDir(file) then fs.delete(file) end
 		if not fs.exists(file) then print("missing", file) add_log("nonexistent %s", file) table.insert(needs, file)
-		elseif hexize(sha256(fread(file))) ~= hash then
+		elseif (data.sizes and data.sizes[file] and data.sizes[file] ~= fs.getSize(file)) or hexize(sha256(fread(file))) ~= hash then
 			add_log("mismatch %s %s", file, hash)
 			print("mismatch on", file, hash)
 			table.insert(needs, file)
