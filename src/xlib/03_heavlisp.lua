@@ -578,4 +578,4 @@ end
 local function run(x,lua)
 	return interpret(into_ast(tokenize(x)),lua)
 end
-return {run=run}
+return {run=run, interpret=interpret, into_ast=into_ast, tokenize=tokenize}
