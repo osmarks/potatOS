@@ -1426,7 +1426,8 @@ else
 	elseif textutils.unserialise(value) ~= nil then value = textutils.unserialise(value) end
 	potatOS.registry.set(key, value)
 end
-		]]
+		]],
+		["/rom/heavlisp_lib/stdlib.hvl"] = fproxy "stdlib.hvl"
 	}
 	
 	for _, file in pairs(fs.list "bin") do

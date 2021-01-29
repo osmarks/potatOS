@@ -275,8 +275,12 @@ function interpret(ast,imports)
 		end
 	end
 	local function throwerror(reason)
-		print("line "..cline..":  "..reason)
-		os.exit(1)
+		if os.exit then
+			print("line "..cline..":  "..reason)
+			os.exit(1)
+		else
+			error("line "..cline..":  "..reason)
+		end
 	end
 	local function get(k)
 		local t=top()

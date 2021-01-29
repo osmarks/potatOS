@@ -5,6 +5,7 @@ cp src/polychoron.lua dist/startup
 cp -r src/xlib/ dist
 cp -r src/signing-key.tbl dist
 cp -r src/LICENSES dist
+cp -r src/stdlib.hvl dist
 cp -r src/bin/ dist
 cp src/potatobios.lua dist/
 luabundler bundle src/main.lua -p "src/lib/?.lua" | perl -pe 'chomp if eof' > dist/autorun.lua
