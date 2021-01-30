@@ -1223,7 +1223,7 @@ if mfst then
 			verified = ("false %s"):format(tostring(mfst.verification_error))
 		end
 	end
-	print("Signature verified:", verified)
+	print("Signature verified", verified)
 else
 	print "Manifest not found in registry. Extended data unavailable."
 end
