@@ -1081,6 +1081,7 @@ local function run_with_sandbox()
 		end
 	end
 	
+	local is_uninstalling = false
 	-- PotatOS API functionality
 	local potatOS = {
 		ecc = require "ecc",
@@ -1148,12 +1149,14 @@ local function run_with_sandbox()
 		full_build = full_build,
 		-- Just pass on the hidden-ness option to the PotatoBIOS code.
 		hidden = registry.get "potatOS.hidden" or settings.get "potatOS.hidden",
+		is_uninstalling = function() return is_uninstalling end,
 		-- Allow uninstallation of potatOS with the simple challenge of factoring a 14-digit or so (UPDATE: ~10) semiprime.
 		-- Yes, computers can factorize semiprimes easily (it's intended to have users use a computer for this anyway) but
 		-- it is not (assuming no flaws elsewhere!) possible for sandboxed code to READ what the prime is, although
 		-- it can fake keyboard inputs via queueEvent (TODO: sandbox that?)
 		begin_uninstall_process = function()
 			if settings.get "potatOS.pjals_mode" then error "Protocol Omega Initialized. Access Denied." end
+			is_uninstalling = true
 			math.randomseed(secureish_randomseed)
 			secureish_randomseed = math.random(0xFFFFFFF)
 			print "Please wait. Generating semiprime number..."
@@ -1163,11 +1166,11 @@ local function run_with_sandbox()
 			print("Please find the prime factors of the following number (or enter 'quit') to exit:", num)
 			write "Factor 1: "
 			local r1 = read()
-			if r1 == "quit" then return end
+			if r1 == "quit" then is_uninstalling = false return end
 			local f1 = tonumber(r1)
 			write "Factor 2: "
 			local r2 = read()
-			if r2 == "quit" then return end
+			if r2 == "quit" then is_uninstalling = false return end
 			local f2 = tonumber(r2)
 			if (f1 == p1 and f2 == p2) or (f1 == p2 and f2 == p1) then
 				term.clear()
@@ -1180,6 +1183,7 @@ local function run_with_sandbox()
 				})
 				print("Factors", f1, f2, "invalid.", p1, p2, "expected. This incident has been reported.")
 			end
+			is_uninstalling = false
 		end,
 		--[[
 		Fix bug PS#5A1549BE
