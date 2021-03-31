@@ -860,6 +860,8 @@ function fs.complete( sPath, sLocation, bIncludeFiles, bIncludeDirs )
     return tEmpty
 end
 
+potatOS.add_log("[BIOS] primary function defns")
+
 -- Load APIs
 local bAPIError = false
 local tApis = fs.list( "rom/apis" )
@@ -1053,6 +1055,8 @@ local function run_shell()
 	term.clear()
 	term.setCursorPos(1, 1)
 	potatOS.add_log "starting user shell"
+    for _, proc in pairs(process.list()) do
+    end
 	os.run( {}, sShell )
 end
 
@@ -1231,6 +1235,7 @@ function bin.dump()
 end
 
 function bin.get(k)
+    potatOS.add_log("asked to fetch %s", k)
 	return localbin[k] or bin.dump()[k]
 end
 

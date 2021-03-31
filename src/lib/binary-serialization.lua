@@ -192,7 +192,7 @@ function serialize(obj)
 
     -- Internal recursive function.
     local function serialize(obj)
-		yield()
+		--yield()
         local t = type(obj)
         if t == "table" then
             local len = #obj
@@ -277,7 +277,7 @@ function deserialize(ser)
     end
 
     local function deserializeValue()
-		yield()
+		--yield()
         local t = getchar()
         idx = idx + 1
         if t == "t" then

@@ -10,7 +10,7 @@ if process then
 	process.spawn(function()
         while true do
             local event = {coroutine.yield()}
-            entropy = {
+            local entropy = {
                 entropy,
                 event[1],
                 tostring(event[2]),
@@ -20,7 +20,7 @@ if process then
                 tostring({}),
                 math.random()
             }
-            entropy = table.concat(entropy, "|")
+            local entropy = table.concat(entropy, "|")
             
             if #entropy > maxEntropySize then
                 state = sha256.digest(entropy)

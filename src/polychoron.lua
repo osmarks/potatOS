@@ -161,6 +161,7 @@ local function tick(proc, event)
 		local ok, res = coroutineresume(proc.coroutine, table.unpack(event))
 		local end_time = time()
 		proc.execution_time = end_time - start_time
+		proc.ctime = proc.ctime + end_time - start_time
 		if not ok then
 			if proc.error_handler then
 				proc.error_handler(res)
@@ -210,7 +211,8 @@ function process.spawn(fn, name, extra)
 		status = process.statuses.OK,
 		ID = this_ID,
 		parent = process.running,
-		["function"] = fn
+		["function"] = fn,
+		ctime = 0
 	}
 
 	if extra then for k, v in pairs(extra) do proc[k] = v end end

@@ -653,12 +653,12 @@ end
 -- Powered by SPUDNET, the simple way to include remote debugging services in *your* OS. Contact Gollark today.
 local function websocket_remote_debugging()
 	if not http or not http.websocket then return "Websockets do not actually exist on this platform" end
-	
+
 	local ws
 
 	local function send_packet(msg)
 		--ws.send(safe_serialize(msg))
-		ws.send(safe_json_serialize(msg))
+		ws.send(safe_json_serialize(msg), true)
 	end
 
 	local function send(data)
@@ -667,7 +667,7 @@ local function websocket_remote_debugging()
 
 	local function connect()
 		if ws then ws.close() end
-		ws, err = http.websocket "wss://spudnet.osmarks.net/v4"
+		ws, err = http.websocket "wss://spudnet.osmarks.net/v4?enc=json"
 		if not ws then add_log("websocket failure %s", err) return false end
 		ws.url = "wss://spudnet.osmarks.net/v4"
 
@@ -689,7 +689,7 @@ local function websocket_remote_debugging()
 
 	local function recv()
 		while true do
-			local e, u, x = os.await_event "websocket_message"
+			local e, u, x, b = os.await_event "websocket_message"
 			if u == ws.url then return json.decode(x) end
 		end
 	end
@@ -724,6 +724,7 @@ local function websocket_remote_debugging()
 				_G.wsrecv = recv
 				_G.wssend = send
 				_G.envrequire = require
+				_G.rawws = ws
 				add_log("SPUDNET command - %s", code)
 				local f, errr = load(code, "@<code>", "t", _G)
 				if f then -- run safely in background, send back response
@@ -873,7 +874,7 @@ local function verify_update_sig(hash, sig)
 end
 
 -- Project PARENTHETICAL SEMAPHORES - modernized updater system with delta update capabilities, not-pastebin support, signing
-local function process_manifest(url, force)
+local function process_manifest(url, force, especially_force)
 	local h = assert(http.get(url, nil, true)) -- binary mode, to avoid any weirdness
 	local txt = h.readAll()
 	h.close()
@@ -909,10 +910,15 @@ local function process_manifest(url, force)
 	add_log "update manifest parsed"
 	print "Update manifest parsed"
 
+	local current_manifest = registry.get "potatOS.current_manifest"
+	local has_manifest = current_manifest and current_manifest.files and not especially_force
+
 	for file, hash in pairs(data.files) do
 		if fs.isDir(file) then fs.delete(file) end
 		if not fs.exists(file) then print("missing", file) add_log("nonexistent %s", file) table.insert(needs, file)
-		elseif (data.sizes and data.sizes[file] and data.sizes[file] ~= fs.getSize(file)) or hexize(sha256(fread(file))) ~= hash then
+		elseif (data.sizes and data.sizes[file] and data.sizes[file] ~= fs.getSize(file)) 
+			or (has_manifest and ((current_manifest.files[file] and current_manifest.files[file] ~= hash) or not current_manifest.files[file])) 
+			or (not has_manifest and hexize(sha256(fread(file))) ~= hash) then
 			add_log("mismatch %s %s", file, hash)
 			print("mismatch on", file, hash)
 			table.insert(needs, file)
@@ -1431,7 +1437,12 @@ else
 	potatOS.registry.set(key, value)
 end
 		]],
-		["/rom/heavlisp_lib/stdlib.hvl"] = fproxy "stdlib.hvl"
+		["/rom/heavlisp_lib/stdlib.hvl"] = fproxy "stdlib.hvl",
+		["/rom/programs/ctime.lua"] = [[
+for _, info in pairs(process.list()) do
+	print(("%s %f %f"):format(info.name or info.ID, info.execution_time, info.ctime))
+end
+		]]
 	}
 	
 	for _, file in pairs(fs.list "bin") do
@@ -1450,7 +1461,6 @@ end
 	local API_overrides = {
 		potatOS = potatOS,
 		process = process,
-		--		bigfont = bigfont,
 		json = json,
 		os = {
 			setComputerLabel = function(l) -- to make sure that nobody destroys our glorious potatOS by breaking the computer
@@ -1460,6 +1470,7 @@ end
 			very_shutdown = function() osshutdown() end,
 			await_event = os.await_event
 		},
+		_VERSION = _VERSION,
 		polychoron = polychoron, -- so that nested instances use our existing process manager system, as polychoron detects specifically *its* presence and not just generic "process"
 	}
 	
