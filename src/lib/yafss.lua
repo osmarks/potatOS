@@ -185,7 +185,7 @@ local function create_FS(root, overlay)
 		children = {
 			["disk"] = { mount = "disk" },
 			["rom"] = { mount = "rom" },
-			["virtual_test"] = { virtual = "bees" }
+			--["virtual_test"] = { virtual = "bees" }
 		}
 	}
 

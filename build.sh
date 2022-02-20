@@ -11,8 +11,8 @@ cp src/potatobios.lua dist/
 npx luabundler bundle src/main.lua -p "src/lib/?.lua" | perl -pe 'chomp if eof' > dist/autorun_full.lua
 WORK=$(pwd)
 cd ./minify
-lua5.1 CommandLineMinify.lua "$WORK/dist/autorun_full.lua" "$WORK/dist/autorun.lua"
-lua5.1 CommandLineMinify.lua "$WORK/dist/potatobios.lua" "$WORK/dist/pb_tmp.lua"
+lua5.1 CommandLineMinify.lua "$WORK/dist/autorun_full.lua" "$WORK/dist/autorun.lua" "$WORK/dist/autorun.lua.map"
+lua5.1 CommandLineMinify.lua "$WORK/dist/potatobios.lua" "$WORK/dist/pb_tmp.lua" "$WORK/dist/potatobios.lua.map"
 mv "$WORK/dist/pb_tmp.lua" "$WORK/dist/potatobios.lua"
 cd "$WORK"
 rm dist/autorun_full.lua

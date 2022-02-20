@@ -178,7 +178,11 @@ local function random_char()
 end
 
 local colors = {}
-for i = 0, 15 do table.insert(colors, ("%x"):format(i)) end
+if duochrome_mode then
+	colors = {"0", "f"}
+else
+	for i = 0, 15 do table.insert(colors, ("%x"):format(i)) end
+end
 
 local function random_pick(list)
 	return list[math.random(1, #list)]

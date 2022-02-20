@@ -62,7 +62,7 @@ if #arg == 1 then
 	--
 	print("Minification complete")
 
-elseif #arg == 2 then
+elseif #arg == 3 then
 	--keep the user from accidentally overwriting their non-minified file with 
 	if arg[1]:find("_min") then
 		print("Did you mix up the argument order?\n"..
@@ -112,9 +112,17 @@ elseif #arg == 2 then
 		return
 	end
 	--
-	outf:write(Format_Mini(ast))
+	local text, map = Format_Mini(ast)
+	outf:write(text)
 	outf:close()
 	--
+	local outf = io.open(arg[3], 'w')
+	if not outf then
+		print("Failed to open `"..arg[3].."` for writing")
+		return
+	end
+	outf:write(map)
+	outf:close()
 	print("Minification complete")
 
 else

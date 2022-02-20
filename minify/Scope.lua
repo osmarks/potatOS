@@ -86,6 +86,8 @@ local Scope = {
 	
 	RenameLocal = function(self, oldName, newName)
 		oldName = type(oldName) == 'string' and oldName or oldName.Name
+		self.name_map = self.name_map or {}
+		self.name_map[newName] = oldName
 		local found = false
 		local var = self:GetLocal(oldName)
 		if var then

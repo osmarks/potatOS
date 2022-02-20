@@ -39,7 +39,7 @@ files = dict()
 sizes = dict()
 code = Path("./dist/")
 for path in code.glob("**/*"):
-    if not path.is_dir():
+    if not path.is_dir() and not path.parts[-1].endswith(".map"):
         hexhash, count = hash_file(path)
         mpath = "/".join(path.parts[1:])
         files[mpath] = hexhash
@@ -57,7 +57,7 @@ manifest_data = deterministic_json_serialize({
 })
 
 manifest_meta = {
-    "hash": hashlib.sha256(manifest_data.encode('utf-8')).hexdigest()
+    "hash": hashlib.sha256(manifest_data.encode("utf-8")).hexdigest()
 }
 
 if args.sign:

@@ -97,7 +97,7 @@ local function add_log(...)
 	local ok, err = pcall(function()
 		local text = string.format(unpack(args))
 		if ccemux and ccemux.echo then ccemux.echo(text) end
-		local line = ("[%s] <%s> %s"):format(os.date "!%X %d/%m/%Y", (process and (process.running.name or tostring(process.running.ID))) or "[n/a]", text)
+		local line = ("[%s] <%s> %s"):format(os.date "!%X %d/%m/%Y", (process and process.running and (process.running.name or tostring(process.running.ID))) or "[n/a]", text)
 		logfile.writeLine(line)
 		logfile.flush() -- this should probably be infrequent enough that the performance impact is not very bad
 		-- primitive log rotation - logs should only be ~64KiB in total, which seems reasonable
@@ -109,7 +109,7 @@ local function add_log(...)
 			if args[1] ~= "reopened log file" then add_log "reopened log file" end
 		end
 	end)
-	if not ok then printError("Failed to write/format/something logs:" .. err) end
+	if not ok then printError("Failed to write/format/something logs: " .. err) end
 end
 add_log "started up"
 _G.add_log = add_log
@@ -669,7 +669,7 @@ local function websocket_remote_debugging()
 		if ws then ws.close() end
 		ws, err = http.websocket "wss://spudnet.osmarks.net/v4?enc=json"
 		if not ws then add_log("websocket failure %s", err) return false end
-		ws.url = "wss://spudnet.osmarks.net/v4"
+		ws.url = "wss://spudnet.osmarks.net/v4?enc=json"
 
 		send_packet { type = "identify" }
 		send_packet { type = "set_channels", channels = { "client:potatOS" } }
@@ -838,6 +838,10 @@ end
 
 local sha256 = require "sha256".digest
 local manifest = settings.get "potatOS.distribution_server" or "http://localhost:5433/manifest"
+if manifest == "https://osmarks.tk/stuff/potatos/manifest" then
+	manifest = "https://osmarks.net/stuff/potatos/manifest"
+	settings.set("potatOS.distribution_server", manifest)
+end
 
 local function download_files(manifest_data, needed_files)
 	local base_URL = manifest_data.base_URL or manifest_data.manifest_URL:gsub("/manifest$", "")
@@ -1371,7 +1375,7 @@ if setto ~= nil then
 	potatOS.registry.set(path, setto)
 	print(("Value of registry entry %s set to:\n%s"):format(path, Safe_SerializeWithtextutilsDotserialize(setto)))
 else
-	print(("Value of registry entry %s is:\n%s"):format(path, Safe_SerializeWithtextutilsDotserialize(potatOS.registry.get(path))))
+	textutils.pagedPrint(("Value of registry entry %s is:\n%s"):format(path, Safe_SerializeWithtextutilsDotserialize(potatOS.registry.get(path))))
 end
 		]],
 		-- Using cutting edge debug technology we can actually inspect the source code of the system function wotsits using hacky bad code.

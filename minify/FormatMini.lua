@@ -21,6 +21,14 @@ local UpperChars = lookupify{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I',
 local Digits = lookupify{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
 local Symbols = lookupify{'+', '-', '*', '/', '^', '%', ',', '{', '}', '[', ']', '(', ')', ';', '#'}
 
+local function serialize_debug_symbols(map)
+	local out = {}
+	for k, v in pairs(map) do
+		table.insert(out, k .. "\t" .. v)
+	end
+	return table.concat(out, "\n")
+end
+
 local function Format_Mini(ast)
 	local formatStatlist, formatExpr;
 	local count = 0
@@ -334,10 +342,6 @@ local function Format_Mini(ast)
 			out = joinStatementsSafe(out, "do")
 			out = joinStatementsSafe(out, formatStatlist(statement.Body))
 			out = joinStatementsSafe(out, "end")
-		elseif statement.AstType == 'LabelStatement' then
-			out = getIndentation() .. "::" .. statement.Label .. "::"
-		elseif statement.AstType == 'GotoStatement' then
-			out = getIndentation() .. "goto " .. statement.Label
 		elseif statement.AstType == 'Comment' then
 			-- ignore
 		elseif statement.AstType == 'Eof' then
@@ -349,9 +353,17 @@ local function Format_Mini(ast)
 		return out
 	end
 
+	local map = {}
+	local function insert(t)
+		for k, v in pairs(t) do
+			map[k] = v
+		end
+	end
+
 	formatStatlist = function(statList)
 		local out = ''
 		statList.Scope:ObfuscateVariables()
+		insert(statList.Scope.name_map or {}) 
 		for _, stat in pairs(statList.Body) do
 			out = joinStatementsSafe(out, formatStatement(stat), ';')
 		end
@@ -359,7 +371,8 @@ local function Format_Mini(ast)
 	end
 
 	ast.Scope:ObfuscateVariables()
-	return formatStatlist(ast)
+	insert(ast.Scope.name_map)
+	return formatStatlist(ast), serialize_debug_symbols(map)
 end
 
 return Format_Mini
