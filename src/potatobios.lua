@@ -860,8 +860,6 @@ function fs.complete( sPath, sLocation, bIncludeFiles, bIncludeDirs )
     return tEmpty
 end
 
-potatOS.add_log("[BIOS] primary function defns")
-
 -- Load APIs
 local bAPIError = false
 local tApis = fs.list( "rom/apis" )
