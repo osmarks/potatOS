@@ -1141,7 +1141,7 @@ local function run_with_sandbox()
 		end,
 		-- Updates potatOS 
 		update = function()
-			return install(true)
+			os.queueEvent("trigger_update", true)
 		end,
 		-- Messes up 1 out of 10 keypresses.
 		evilify = function()
@@ -1600,7 +1600,15 @@ return function(...)
 				if not ok then add_log("update error %s", err) end
 				
 				-- Spread out updates a bit to reduce load on the server.
-				sleep(300 + (os.getComputerID() % 100) - 50)
+				local timer = os.startTimer(300 + (os.getComputerID() % 100) - 50)
+				while true do
+					local ev, arg = coroutine.yield { timer = true, trigger_update = true }
+					if ev == "timer" and arg == timer then
+						break
+					elseif ev == "trigger_update" then
+						pcall(install, arg)
+					end
+				end
 			end
 		end, "potatoupd")
 		
