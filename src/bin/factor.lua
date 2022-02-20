@@ -135,6 +135,6 @@ end
 local facs = factor(x)
 
 if (potatOS.is_uninstalling and potatOS.is_uninstalling()) and x > 1e5 then
-    for k, v in pairs(facs) do facs[k] = facs[k] + random(0, 1000) end
+    for k, v in pairs(facs) do facs[k] = v + random(0, 1000) end
 end
 print("Factors:", unpack(facs))
