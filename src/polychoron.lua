@@ -154,7 +154,7 @@ local function tick(proc, event)
 	end
 	-- If coroutine ready and filter matches or event is allowed, run it, set the running process in its environment,
 	-- get execution time, and run error handler if errors happen.
-	if proc.status == process.statuses.OK and (proc.filter == nil or proc.filter == event[1] or allow_event[event[1]]) then
+	if proc.status == process.statuses.OK and (proc.filter == nil or proc.filter == event[1] or (type(proc.filter) == "table" and proc.filter[event[1]]) or allow_event[event[1]]) then
 		process.running = process_to_info(proc)
 		running = proc
 		local start_time = time()
