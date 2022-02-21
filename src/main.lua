@@ -31,6 +31,7 @@ end
 
 require "stack_trace"
 local json = require "json"
+_G.json_for_disks_and_such = json
 local registry = require "registry"
 
 --[[
