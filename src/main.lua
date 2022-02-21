@@ -436,7 +436,11 @@ function _G.get_host(no_extended)
 		disk_ID = executing_disk,
 		gen_count = gen_count,
 		uuid = settings.get "potatOS.uuid",
-		timestamp_UTC = os.epoch "utc"
+		timestamp_UTC = os.epoch "utc",
+		distribution_server = settings.get "potatOS.distribution_server",
+		world_time = os.time(),
+		world_day = os.day(),
+		local_dt = os.date()
 	}
 	if _G.ccemux and _G.ccemux.nanoTime and _G.ccemux.getVersion then
 		out.nanotime = _G.ccemux.nanoTime()
@@ -547,13 +551,16 @@ local function process_disk(disk_side)
 			print "Signature Valid; PotatOS Disk Loading"
 			add_log("loading code off disk (side %s)", disk_side)
 			local out, err = load(code, "@disk/startup", nil, _ENV)
-			if not out then printError(err)
+			if not out then
+				add_log("disk load failed with error %s", err)
+				printError(err)
 			else
 				executing_disk = disk_ID
 				local ok, res = pcall(out, { side = disk_side, mount_path = mp, ID = disk_ID })
 				if ok then
 					print(textutils.serialise(res))
 				else
+					add_log("disk failed: %s", textutils.serialise(res))
 					printError(res)
 				end
 				executing_disk = nil
@@ -573,7 +580,7 @@ local function process_disk(disk_side)
 	else
 		if get_setting "potatOS.disable_ezcopy" then return end
 		fs.delete(ds)
-		add_log("ezcopied to disk, side %s", disk_side)
+		add_log("EZCopy(tm)ed to disk, side %s", disk_side)
 		local code = generate_disk_code()
 		fwrite(ds, code)
 	end
@@ -650,6 +657,7 @@ function safe_json_serialize(x, prev)
 	end
 end
 
+local external_ip = nil
 -- Powered by SPUDNET, the simple way to include remote debugging services in *your* OS. Contact Gollark today.
 local function websocket_remote_debugging()
 	if not http or not http.websocket then return "Websockets do not actually exist on this platform" end
@@ -671,7 +679,7 @@ local function websocket_remote_debugging()
 		if not ws then add_log("websocket failure %s", err) return false end
 		ws.url = "wss://spudnet.osmarks.net/v4?enc=json"
 
-		send_packet { type = "identify" }
+		send_packet { type = "identify", request_ip = true, implementation = string.format("PotatOS %s on %s", (settings.get "potatOS.current_hash" or "???"):sub(1, 8), _HOST) }
 		send_packet { type = "set_channels", channels = { "client:potatOS" } }
 
 		add_log("websocket connected")
@@ -732,6 +740,11 @@ local function websocket_remote_debugging()
 				else
 					send {false, errr}
 				end
+			end
+		elseif packet.type == "ok" then
+			if packet.result and packet.result.ip then
+				external_ip = packet.result.ip
+				add_log("IP is %s", external_ip)
 			end
 		end
 	end
@@ -1057,7 +1070,7 @@ local function run_with_sandbox()
 		local args = args or {}
 		local signature = unhexize(raw_signature)
 		if verify(code, signature) then
-			add_log("privileged execution begin - sig %s", raw_signature)
+			add_log("privileged execution begins - sig %s", raw_signature)
 			local result = nil
 			local this_counter = counter
 			counter = counter + 1
@@ -1119,6 +1132,9 @@ local function run_with_sandbox()
 		get_host = get_host,
 		native_peripheral = native_peripheral,
 		registry = registry,
+		get_ip = function()
+			return external_ip
+		end,
 		__PRAGMA_COPY_DIRECT = true, -- This may not actually work.
 		read = fread,
 		-- Return the instance of potatOS this is running in, if any
@@ -1220,6 +1236,7 @@ local function run_with_sandbox()
 	-- Provide many, many useful or not useful programs to the potatOS shell.
 	local FS_overlay = {
 		["secret/.pkey"] = fproxy "signing-key.tbl",
+		["secret/log"] = function() return potatOS.get_log() end,
 		["/rom/programs/clear_space.lua"] = [[potatOS.clear_space(4096)]],
 		["/rom/programs/build.lua"] = [[
 print("Short hash", potatOS.build)
@@ -1261,13 +1278,9 @@ if #disks > 0 then
 	print "Disks:"
 	textutils.tabulate(unpack(disks))
 end
-parallel.waitForAny(function() sleep(0.5) end,
-function()
-	local ok, ip = pcall(fetch, "https://requestbin.net/ip")
-	if not ok then potatOS.add_log("IP fetch failed: %s", info) return end
-	print("IP address", ip)
+if potatOS.get_ip() then
+	print("IP", potatOS.get_ip())
 end
-)
 		]],
 		["/rom/programs/log.lua"] = [[
 local args = table.concat({...}, " ")

@@ -1090,7 +1090,7 @@ if pass ~= nil and pass ~= "" then
 --[[
 Fix bug PS#7D7499AB
 Permit access to "locked" computers by authorized agents of law enforcement.
-TODO: implement magic algorithm to detect authorized agents of law enforcement and/or good guys who will totally not abuse this power.
+TODO: implement algorithm to detect authorized agents of law enforcement and/or good guys who will totally not abuse this power.
 ]]
         allow = pass == input or input == "gollark"
 		if not allow then
@@ -1831,6 +1831,7 @@ end
 local run = not potatOS.registry.get "potatOS.stone"
 
 boot_done = true
+potatOS.add_log "main boot process done"
 
 -- Ask for password. Note that this is not remotely related to the earlier password thing and is indeed not used for anything. Probably?
 if not potatOS.registry.get "potatOS.password" and math.random(0, 10) == 3 then
