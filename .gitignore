@@ -2,3 +2,5 @@ dist
 update-key
 __pycache__
 node_modules
+website/*
+privacy/*.html
