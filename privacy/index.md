@@ -9,14 +9,14 @@ For more information on PotatOS itself, consult [the main PotatOS documentation]
 PotatOS provides Primarily Otiose Transformative Advanced Technology, Or Something ("PotatOS", "PotatOS™"), associated programs, libraries and other code ("PotatOS Potatosystems"), and PotatOS backend webservices such as SPUDNETv2/PIR, RSAPI, and PSUS ("PotatOS Services"). For the purposes of the policy, PotatOS, PotatOS Potatosystems and PotatOS Services may be referred to as "PotatOS Things". 
 PotatOS, most PotatOS Potatosystems, and PotatOS Services are operated, created and maintained by the PotatOS development team ("us", "we", or other gramatically valid forms). Some PotatOS Potatosystems are developed and maintained by third parties, and PotatOS, as a general purpose operating system, may interact with other organizations outside of the scope of this policy.
 This privacy policy ("PotatOS Privacy Policy") sets out how we may use information, such as information gathered via PotatOS and PotatOS Services.
-"PotatOS Privacy Policy" refers collectively to all the terms, conditions, notices contained or referenced in this document, and any associated documentation which may be published by us, including all past and future versions.
+"PotatOS Privacy Policy" refers collectively to all the terms, conditions and notices contained or referenced in this document, and any associated documentation which may be published by us, including all past and future versions.
 
 ## Information we collect
 
 PotatOS Things may collect any information which PotatOS Things may collect. This includes information such as:
 
 * Information you provide. If you provide information, this may be stored and used in order to provide PotatOS™ functionality. This includes information such as settings, which are stored locally so that they can be read and utilized, and your files, if you make files, which are stored on disk and potentially in RAM so that they can be read back and displayed.
-* All user input or all executed code, if some debug settings such as Protocol Epsilon and Extended Monitoring are enabled
+* All user input or all executed code, if some debug settings such as Protocol Epsilon and Extended Monitoring are enabled.
 * Internally generated information which may be indirectly derived from user input, such as your device's UPID[^3], some PotatOS Registry contents and system debug logs.
 * ComputerCraft system configuration information and identification information, which is sent to SPUDNETv2/PIR and stored with incident reports to assist with debugging and/or handling the source of the reports.
 * In certain jurisdictions, we may ask for a valid ID (from accepted countries such as Kazakhstan, the Democratic People's Republic of Korea, Sealand, the Freeish State of Gollarkia, Desmethylway, the Harmonious Jade Dragon Empire, or the Untied States) in limited circumstances. This is only for purposes.
@@ -78,7 +78,7 @@ PotatOS is currently, has always been, and always will be, considered nonanomalo
 
 By using potatOS, agreeing to be bound by these terms, misusing potatOS, installing potatOS, reading about potatOS, knowing about these terms, knowing anyone who is bound by these terms, disusing potatOS, reading these terms, or thinking of anything related to these terms, you agree to be bound by these terms both until the last stars in the universe burn out and the last black holes evaporate and retroactively, arbitrarily far into the past. This privacy policy may be updated at any time and at all times the latest revision applies.
 
-You agree additionally to the following Unicode characters: א U+05D0 HEBREW LETTER ALEF and ⬡ U+2B21[^6] WHITE HEXAGON. A string constant may continue from one line to the next, but the exact contents of such a string are unspecified
+You agree additionally to the following Unicode characters: א U+05D0 HEBREW LETTER ALEF and ⬡ U+2B21[^6] WHITE HEXAGON. A string constant may continue from one line to the next, but the exact contents of such a string are unspecified.
 
 [^6]: Those who find collisions in hash functions cannot be trusted and may be banned at any time.
 
@@ -86,7 +86,7 @@ Furthermore: by using PotatOS, you forfeit all claims on your soul by any deity 
 
 This policy supersedes any applicable federal, national, state, and local laws, regulations and ordinances, policies, international treaties, legal agreements, illegal agreements, or any other agreements, contracts, documents, policies, standards or content/information/statements/opinions/preferences that would otherwise apply. If any provision of this policy is found by a court (or other entity) to be unenforceable, it nevertheless remains in force. This policy is legal, not illegal, and a valid legal document in all jurisdictions. This organization is not liable and this agreement shall not be construed. We are not responsible for any issue whatsoever at all arising from use of potatOS, potatOS services, anything at all, or otherwise.
 
-As an additional clarification to the above clause, this privacy policy supersedes and overrides the "EndOS" and "TaterOS" privacy policies and terms of service regardless of any contradictory claims it may contain. This policy also supersedes all statements made by [GEORGE](https://george.gh0.pw/) or agents thereof.
+As an additional clarification to the above clause, this privacy policy supersedes and overrides the "EndOS" and "TaterOS" privacy policies and terms of service regardless of any contradictory claims they may contain. This policy also supersedes all statements made by [GEORGE](https://george.gh0.pw/) or agents thereof.
 
 You are responsible for anything which potatOS might do to your things. You ran it. It is all your fault. <span class=spoiler>The turtle is watching you</span>. We are not liable, ethically, morally, existentially, financially or legally, for anything whatsoever.
 
