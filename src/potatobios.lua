@@ -1108,7 +1108,7 @@ end
 if potatOS.registry.get "potatOS.seen_terms_notice" == nil or potatOS.registry.get "potatOS.seen_terms_notice" == false then
 	term.setCursorPos(1, 1)
 	potatOS.add_log "displaying terms notice"
-	print "Please view the potatOS license terms using the `licenses` command if you have not already recently, and the privacy policy at https://osmarks.net/p3.html (the copy shipped with PotatOS Licenses is outdated). Press the Any key to continue."
+	print "Please view the potatOS license terms using the `licenses` command if you have not already recently, and the privacy policy at https://potatos.madefor.cc/privacy/ (the copy shipped with PotatOS Licenses is outdated). Press the Any key to continue."
 	potatOS.registry.set("potatOS.seen_terms_notice", true)
 	os.pullEvent "key"
 end
