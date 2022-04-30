@@ -95,7 +95,7 @@ Here's a list of some of the more useful and/or consistently available functions
 - `potatOS.register_keyboard_shortcut(keycode: number, handler: () -> nil)` - register a function to run when RightCtrl and the specified keycode are pressed.
 - `potatOS.registry.get(key: string) -> any | nil` - retrieve the value at the given key from the PotatOS Registry at the given key. Returns `nil` if not found.
 - `potatOS.registry.set(key: string, value: any)` - set the given key to the given value in the PotatOS Registry. Values must be serializable using PotatOS-BLODS, i.e. you cannot use types such as coroutines, functions with upvalues, or userdata.
-- `potatOS.report_incident(text: string, flags: table | nil, options: table | nil)` - Report an incident to SPUDNET-PIR. `flags` is a table of strings which can be used to search for incidents. `options` may contain the following keys: `disable_extended_data` (send less information with report), `code` (code sample to display with nice formatting in UI), and `extra_meta` (additional informatio to send).
+- `potatOS.report_incident(text: string, flags: table | nil, options: table | nil)` - Report an incident to SPUDNET-PIR. `flags` is a table of strings which can be used to search for incidents. `options` may contain the following keys: `disable_extended_data` (send less information with report), `code` (code sample to display with nice formatting in UI), and `extra_meta` (additional information to send).
 - `potatOS.rot13(x: string) -> string` - rot13-encode the given value. Rot13 is a stateless, keyless, symmetric cipher.
 - `potatOS.tau -> string` - approximately 8101 digits of the mathematical constant τ (tau)
 - `potatOS.update()` - force a system update

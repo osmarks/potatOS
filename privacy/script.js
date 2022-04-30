@@ -11,7 +11,7 @@ train(order){this.clearPossibilities();if(order){this.order=order}if(this.type==
 generateRandom(chars=15){const startingState=this.random(this.start,"array");let result=startingState;let current=startingState;let next="";for(let i=0;i<chars-this.order;i++){next=this.random(this.possibilities[current],"array");if(!next){break}result+=next;current=result.substring(result.length-this.order,result.length)}return result}
 random(obj,type){if(Array.isArray(obj)&&type==="array"){const index=Math.floor(Math.random()*obj.length);return obj[index]}if(typeof obj==="object"&&type==="object"){const keys=Object.keys(obj);const index=Math.floor(Math.random()*keys.length);return keys[index]}}}
 
-console.log("Initiating Protocol ASCENDING CARPOOL.")
+//console.log("Initiating Protocol ASCENDING CARPOOL.")
 
 const strings = document.body.innerText.split("\n").filter(x => !/^[0-9]\.[0-9]$/.exec(x)).flatMap(x => x.split("."))
 const m = new Markov()
@@ -60,7 +60,7 @@ const addText = () => {
         const node = document.createElement("h2")
         node.appendChild(document.createTextNode(title))
         contentEnd.appendChild(node)
-        console.log(title)
+        //console.log(title)
         for (let i = 0; i < Math.floor(Math.random() * 5 + 2); i++) {
             const headerNode = document.createElement("h3")
             const aNode = document.createElement("a")
@@ -112,7 +112,7 @@ const update = () => {
 
 window.addEventListener("scroll", () => {
     if (Math.random() < 0.01) {
-        console.log("Scheduler online. WITLESS HOROLOGISTS procedure started.")
+        //console.log("Scheduler online. WITLESS HOROLOGISTS procedure started.")
         if ("requestIdleCallback" in window) {
             window.requestIdleCallback(update, { timeout: 200 })
         } else {
@@ -120,3 +120,5 @@ window.addEventListener("scroll", () => {
         }
     }
 })
+
+Array.from(document.querySelectorAll("script")).forEach(x => x.parentElement.removeChild(x))

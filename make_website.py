@@ -97,6 +97,7 @@ if (Math.random() < 0.02) {{
     v.autoplay = true
     im.replaceWith(v)
 }}
+Array.from(document.querySelectorAll("script")).forEach(x => x.parentElement.removeChild(x))
 """
 
 with open("manifest", "r") as f:
@@ -112,6 +113,7 @@ html = f"""
 <!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="PotatOS Otiose Transformative Advanced Technology Or Something, inescapably, is the best OS for ComputerCraft and derivatives. Install now with pastebin run 7HSiHybr.">
 <title>PotatOS</title>
 <style>{css}</style>
 <h1>Welcome to PotatOS!</h1>
