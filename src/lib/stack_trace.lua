@@ -66,7 +66,8 @@ local function xpcall_with(fn, ...)
   local res = table.pack(_xpcall(function() return fn(unpack(args)) end, traceback)) if not res[1] then trace = traceback("stack_trace.lua:1:") end
   local ok, err = res[1], res[2]
 
-  if not ok and err ~= nil then
+  -- PS#EAB415D8: CC now uses error sentinel things in some places; we do not want to make those strings
+  if not ok and err ~= nil and type(err) == "string" then
     trace = trim_traceback(err, trace)
 
     -- Find the position where the stack traceback actually starts

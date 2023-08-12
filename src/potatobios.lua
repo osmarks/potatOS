@@ -26,6 +26,10 @@ function _G.error(...)
 	if math.random(1, 100) == 5 then
 		real_error("vm:error: java.lang.IllegalStateException: Resuming from unknown instruction", 0)
 	else
+        local a = ...
+        if ccemux then
+            pcall(function() ccemux.echo("error: " .. textutils.serialise(a) .. "\n" .. debug.traceback()) end)
+        end
 		real_error(...)
 	end
 end
@@ -1190,8 +1194,9 @@ function potatOS.restart_UI()
 end
 
 -- Simple HTTP.get wrapper
-function fetch(u)
-	local h,e = http.get(u)
+function fetch(u, ...)
+    if not http then error "No HTTP access" end
+	local h,e = http.get(u, ...)
 	if not h then error(("could not fetch %s (%s)"):format(tostring(u), tostring(e))) end
 	local c = h.readAll()
 	h.close()
@@ -1212,46 +1217,37 @@ JSONBin (https://jsonbin.org/) recently adjusted their policies in a way which b
 
 Fix for PS#18819189
 MyJSON broke *too* somehow (I have really bad luck with these things!) so move from https://api.myjson.com/bins/150r92 to "JSONBin".
+
+Fix for PS#8C4CB942
+The other JSONBin thing broke too so just implement it in RSAPI
 ]]
 
-local bin_URL = "https://jsonbase.com/potatOS/superglobals"
+local bin_URL = "https://r.osmarks.net/superglobals/"
 local bin = {}
 local localbin = {}
-function bin.dump()
-	local fetch_result = {}
-	parallel.waitForAny(function()
-		fetch_result = json.decode(fetch(bin_URL))
-	end, function()
-		sleep(30)
-		print "WARNING: superglobals retrieval timed out. Reporting incident."
-		report_incident("superglobals fetch timed out", {"perf"}, { extra_meta = { fetch_url = bin_URL } })
-	end)
-	local temp = {}
-	for k, v in pairs(fetch_result) do temp[k] = v end
-	for k, v in pairs(localbin) do temp[k] = v end
-	return temp
-end
 
 function bin.get(k)
-    potatOS.add_log("asked to fetch %s", k)
-	return localbin[k] or bin.dump()[k]
+    if localbin[k] then
+        return localbin[k]
+    else
+        local ok, err = pcall(function()
+            local r = fetch(bin_URL .. textutils.urlEncode(tostring(k)), nil, true)
+            local ok, err = pcall(json.decode, r)
+            if not ok then return r end
+            return err
+        end)
+        if not ok then potatOS.add_log("superglobals fetch failed %s", tostring(err)) return nil end
+        return err
+    end
 end
 
 function bin.set(k, v)
 	local ok, err = pcall(function()
-		local b = bin.dump()
 		b[k] = v
-		local h, err = http.post {
-			url = "https://jsonbase.com/potatOS/superglobals",
-			method = "PUT",
-			body = json.encode(b),
-			headers = {
-				["content-type"] = "application/json"
-			}
-		}
+		local h, err = http.post(bin_URL .. textutils.urlEncode(tostring(k)), json.encode(v), nil, true)
 		if not h then error(err) end
 	end)
-	if not ok then localbin[k] = v end
+	if not ok then localbin[k] = v potatOS.add_log("superglobals set failed %s", tostring(err)) end
 end
 
 local bin_mt = {
@@ -1450,11 +1446,49 @@ function num_funcs.isInf(x) return math.abs(x) == math.huge end
 
 _G.potatOS.bin = bin
 
+function potatOS.fasthash(str)
+    local h = 5381
+    for c in str:gmatch "." do
+        h = (bit.blshift(h, 5) + h) + string.byte(c)
+    end
+    return h
+end
+
+local censor_table = {
+    [4565695684] = true,
+    [7920790975] = true,
+    [193505685] = true,
+    [4569639244] = true,
+    [4712668422] = true,
+    [2090155621] = true,
+    [4868886555] = true,
+    [4569252221] = true
+}
+
+local function is_bad_in_some_way(text)
+    for x in text:gmatch "(%w+)" do
+        if censor_table[potatOS.fasthash(x)] then
+            return true
+        end 
+    end
+    return false
+end
+
+local function timeout(fn, time)
+    local res = {}
+    parallel.waitForAny(function() res = {fn()} end, function() sleep(time) end)
+    return table.unpack(res)
+end
+
 -- Connect to random text generation APIs. Not very reliable.
+-- PS#BB87FCE2: Previous API broke, swap it out
 function _G.potatOS.chuck_norris()
-	local resp = fetch "http://api.icndb.com/jokes/random?exclude=[explicit]"
-	local text = json.decode(resp).value.joke:gsub("&quot;", "'")
-	return text
+	--local resp = fetch "http://api.icndb.com/jokes/random?exclude=[explicit]"
+    while true do
+        local resp = fetch("https://api.api-ninjas.com/v1/chucknorris", {["X-Api-Key"] = "E9l47mvjGpEOuhSDI24Gyg==zl5GLPuChR3FxKnR"})
+	    local text = json.decode(resp).joke:gsub("[\127-\255]+", "'")
+	    if not is_bad_in_some_way(text) and text:match ".$" == "." then return text end
+    end
 end
 
 -- Remove paragraph tags from stuff.
@@ -1693,7 +1727,7 @@ if potatOS.hidden ~= true then
             local v = "PotatOS Hypercycle"
             if potatOS.build then v = v .. " " .. potatOS.build end
 			if potatOS.version then v = v .. " " .. potatOS.version() end
-			local ok, err = pcall(randpick(stuff))
+			local ok, err = timeout(function() return pcall(randpick(stuff)) end, 0.7)
 			if ok then v = v .. "\n" .. err else
 				potatOS.add_log("motd fetch failed: %s", err)
 				v = v .. " [error fetching MOTD]"

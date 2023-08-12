@@ -842,10 +842,11 @@ local function gen_uuid()
 	return table.concat(out)
 end
 
+-- PS#44BE67B6: ipairs somehow causing issues on CraftOS-PC
 local function hexize(tbl)
 	local out = {}
-	for k, v in ipairs(tbl) do
-		out[k] = ("%02x"):format(v)
+	for k = 1, #tbl do
+		out[k] = string.format("%02x", tbl[k])
 	end
 	return table.concat(out)
 end
@@ -1580,6 +1581,7 @@ end
 				
 return function(...)
 	local command = table.concat({...}, " ")
+	add_log("command line is %q", command)
 	
 	-- Removes whitespace. I don't actually know what uses this either.
 	local function strip_whitespace(text)
@@ -1607,7 +1609,8 @@ return function(...)
 		if config.get "romReadOnly" ~= false then pcall(config.set, "romReadOnly", false) end -- TODO: do something COOL with this.
 	end
 	
-	if not polychoron or not fs.exists "potatobios.lua" or not fs.exists "autorun.lua" then -- Polychoron not installed, so PotatOS Tau isn't.
+	if not polychoron or not fs.exists "potatobios.lua" or not fs.exists "autorun.lua" then -- Polychoron not installed, so PotatOS isn't.
+		add_log "running installation"
 		install(true)
 	else
 		process.spawn(function() -- run update task in kindofbackground process

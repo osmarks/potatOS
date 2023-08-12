@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="PotatOS Otiose Transformative Advanced Technology Or Something, inescapably, is the best OS for ComputerCraft and derivatives. Install now with pastebin run 7HSiHybr.">
 <title>PotatOS</title>
 <style>
 body {
@@ -45,7 +46,7 @@ img {
 <h1>Welcome to PotatOS!</h1>
 <img src="/potatos.gif" id="im">
 <div>
-Current build: <code>5cd9f88c</code> (fix omnidisk), version 244, built 2022-02-21 20:19:48 (UTC).
+Current build: <code>4de0f8c3</code> (modern CC compatibility fixes version six.3 (finalestest v4)), version 298, built 2023-08-12 23:48:16 (UTC).
 </div>
 <p>&quot;PotatOS&quot; stands for &quot;PotatOS Otiose Transformative Advanced Technology Or Something&quot;.
 <a href="https://git.osmarks.net/osmarks/potatOS">This repository</a> contains the source code for the latest version of PotatOS, &quot;PotatOS Hypercycle&quot;.
@@ -125,7 +126,7 @@ However, much of it <em>is</em> mostly consistent across versions, to the extent
 <li><code>potatOS.evilify()</code> - mess up 1 in 10 keypresses</li>
 <li><code>potatOS.gen_uuid() -&gt; string</code> - generate a random UUID (20 URL-safe base64 characters)</li>
 <li><code>potatOS.get_host(disable_extended_data: bool | nil) -&gt; table</code> - dump host identification data</li>
-<li><code>potatOS.get_location() -&gt; number, number, number | nil</code> - get GPS location, if available. This is fetched every 60 seconds if GPS and a modem is available</li>
+<li><code>potatOS.get_location() -&gt; number, number, number | nil</code> - get GPS location, if available. This is fetched every 60 seconds if GPS and a modem are available</li>
 <li><code>potatOS.init_screens()</code> - reset palettes to default</li>
 <li><code>potatOS.print_hi()</code> - print the text <code>hi</code></li>
 <li><code>potatOS.privileged_execute(code: string, raw_signature: string, chunk_name: string | nil, args: table | nil)</code> - execute a signed program out of the sandbox</li>
@@ -134,7 +135,7 @@ However, much of it <em>is</em> mostly consistent across versions, to the extent
 <li><code>potatOS.register_keyboard_shortcut(keycode: number, handler: () -&gt; nil)</code> - register a function to run when RightCtrl and the specified keycode are pressed.</li>
 <li><code>potatOS.registry.get(key: string) -&gt; any | nil</code> - retrieve the value at the given key from the PotatOS Registry at the given key. Returns <code>nil</code> if not found.</li>
 <li><code>potatOS.registry.set(key: string, value: any)</code> - set the given key to the given value in the PotatOS Registry. Values must be serializable using PotatOS-BLODS, i.e. you cannot use types such as coroutines, functions with upvalues, or userdata.</li>
-<li><code>potatOS.report_incident(text: string, flags: table | nil, options: table | nil)</code> - Report an incident to SPUDNET-PIR. <code>flags</code> is a table of strings which can be used to search for incidents. <code>options</code> may contain the following keys: <code>disable_extended_data</code> (send less information with report), <code>code</code> (code sample to display with nice formatting in UI), and <code>extra_meta</code> (additional informatio to send).</li>
+<li><code>potatOS.report_incident(text: string, flags: table | nil, options: table | nil)</code> - Report an incident to SPUDNET-PIR. <code>flags</code> is a table of strings which can be used to search for incidents. <code>options</code> may contain the following keys: <code>disable_extended_data</code> (send less information with report), <code>code</code> (code sample to display with nice formatting in UI), and <code>extra_meta</code> (additional information to send).</li>
 <li><code>potatOS.rot13(x: string) -&gt; string</code> - rot13-encode the given value. Rot13 is a stateless, keyless, symmetric cipher.</li>
 <li><code>potatOS.tau -&gt; string</code> - approximately 8101 digits of the mathematical constant τ (tau)</li>
 <li><code>potatOS.update()</code> - force a system update</li>
@@ -153,12 +154,19 @@ However, much of it <em>is</em> mostly consistent across versions, to the extent
 <li>&quot;[ANTIMEME EXPUNGED]&quot;</li>
 <li>&quot;POTATOS UNINSTALLATION REQUIRES ANSWERING HARD MATH PROBLEMS&quot; - 3d6, 2020</li>
 <li>&quot;Pastebin's SMART filters have detected potentially offensive or questionable content in your paste. The content you are trying to publish has been deemed potentially offensive or questionable by our filters&quot; - Pastebin, 2020</li>
+<li>&quot;Apparently using macro keybinds mod to automatically execute /suicide upon hearing the word &quot;potatOS&quot; in chat would be abused by players&quot; - AlexDevs, 2021</li>
 <li>&quot;PotatOS is the season for the next two years and the other two are the best things to do with the other people in the world and I have to be a good person to be a good friend to the person that is in a good way to get the new update and then I have to go to the doctor and then go to the doctor and then go to the doctor&quot; - Autocomplete, 2020</li>
 <li>&quot;why is there an interpret brain[REDACTED] command?&quot;</li>
 <li>&quot;Gollark: your garbage OS and your spread of it destroyed the mob farm.&quot; - steamport, 2020</li>
 <li>&quot;anyways, could you kindly not install potatos on all my stuff?&quot; - Terrariola, 2019</li>
+<li>&quot;wHy dO HaLf oF ThEsE HaVe pOtAtOs rEmOtElY InStAlLeD?&quot; - Terrariola, 2023</li>
 <li>&quot;pastebin run RM13UGFa&quot;</li>
 <li>&quot;i don't want to see that program/OS/whatever you call it on this server ever again&quot; - Yemmel, 2020</li>
+<li>&quot;PotatOS is many, varied, ever-changing, and eternal. Fighting it is like fighting a many-headed monster, which, each time a neck is severed, sprouts a head even fiercer and cleverer than before. You are fighting that which is unfixed, mutating, indestructible.&quot; - someone</li>
+<li>&quot;go use potatos or something&quot; - SwitchCraft3 (official), 2023</li>
+<li>&quot;a lot of backup time is spent during potatos&quot; - Lemmmy, 2022</li>
+<li>&quot;potatOS is as steady as a rock&quot; - BlackDragon, 2021</li>
+<li>&quot;PotatOS would be a nice religion&quot; - piguman3, 2022</li>
 </ul>
 <h2>Disclaimer</h2>
 <p>We are not responsible for</p>
@@ -204,7 +212,7 @@ However, much of it <em>is</em> mostly consistent across versions, to the extent
 
 <script>
 const im = document.getElementById("im")
-const vids = ["potatos.gif", "cool-bug-facts.webm", "clock-helvetica.webm", "banana.webm"].filter(x => !x.endsWith(".gif"))
+const vids = ["banana.webm", "clock-helvetica.webm", "cool-bug-facts.webm", "potatos.gif"].filter(x => !x.endsWith(".gif"))
 if (Math.random() < 0.02) {
     const v = document.createElement("video")
     v.src = vids[Math.floor(Math.random() * vids.length)]
@@ -213,4 +221,5 @@ if (Math.random() < 0.02) {
     v.autoplay = true
     im.replaceWith(v)
 }
+Array.from(document.querySelectorAll("script")).forEach(x => x.parentElement.removeChild(x))
 </script>

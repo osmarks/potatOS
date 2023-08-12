@@ -60,7 +60,7 @@ local m_ldexp = math.ldexp or function (x, exp) return x * 2.0 ^ exp; end;
 local m_type = math.type or function (n) return n % 1 == 0 and n <= maxint and n >= minint and "integer" or "float" end;
 local s_pack = string.pack or softreq("struct", "pack");
 local s_unpack = string.unpack or softreq("struct", "unpack");
-local b_rshift = softreq("bit32", "rshift") or softreq("bit", "rshift") or
+local b_rshift = softreq("bit32", "rshift") or softreq("bit", "rshift") or (bit or {}).brshift or
 	dostring "return function(a,b) return a >> b end" or
 	function (a, b) return m_max(0, m_floor(a / (2 ^ b))); end;
 

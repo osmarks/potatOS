@@ -114,12 +114,19 @@ Here's a list of some of the more useful and/or consistently available functions
 - "[ANTIMEME EXPUNGED]"
 - "POTATOS UNINSTALLATION REQUIRES ANSWERING HARD MATH PROBLEMS" - 3d6, 2020
 - "Pastebin's SMART filters have detected potentially offensive or questionable content in your paste. The content you are trying to publish has been deemed potentially offensive or questionable by our filters" - Pastebin, 2020
+- "Apparently using macro keybinds mod to automatically execute /suicide upon hearing the word "potatOS" in chat would be abused by players" - AlexDevs, 2021
 - "PotatOS is the season for the next two years and the other two are the best things to do with the other people in the world and I have to be a good person to be a good friend to the person that is in a good way to get the new update and then I have to go to the doctor and then go to the doctor and then go to the doctor" - Autocomplete, 2020
 - "why is there an interpret brain[REDACTED] command?"
 - "Gollark: your garbage OS and your spread of it destroyed the mob farm." - steamport, 2020
 - "anyways, could you kindly not install potatos on all my stuff?" - Terrariola, 2019
+- "wHy dO HaLf oF ThEsE HaVe pOtAtOs rEmOtElY InStAlLeD?" - Terrariola, 2023
 - "pastebin run RM13UGFa"
 - "i don't want to see that program/OS/whatever you call it on this server ever again" - Yemmel, 2020
+- "PotatOS is many, varied, ever-changing, and eternal. Fighting it is like fighting a many-headed monster, which, each time a neck is severed, sprouts a head even fiercer and cleverer than before. You are fighting that which is unfixed, mutating, indestructible." - someone
+- "go use potatos or something" - SwitchCraft3 (official), 2023
+- "a lot of backup time is spent during potatos" - Lemmmy, 2022
+- "potatOS is as steady as a rock" - BlackDragon, 2021
+- "PotatOS would be a nice religion" - piguman3, 2022
 
 ## Disclaimer
 

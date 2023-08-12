@@ -138,18 +138,6 @@ local function combine(segs)
     end
     return out
 end
-
--- magic from http://lua-users.org/wiki/SplitJoin
--- split string into lines
-local function lines(str)
-	local t = {}
-	local function helper(line)
-		table.insert(t, line)
-		return ""
-	end
-	helper((str:gsub("(.-)\r?\n", helper)))
-	return t
-end
  
 -- Fetch the contents of URL "u"
 local function fetch(u)
@@ -160,12 +148,28 @@ local function fetch(u)
 end
 
 -- Make a read handle for a string
+-- PS#8FE487EF: Incompletely implemented handle behaviour lead to strange bugs on recent CC
 local function make_handle(text)
-	local lines = lines(text)
-	local h = {line = 0}
+	local h = {}
+	local cursor = 1
 	function h.close() end
-	function h.readLine() h.line = h.line + 1 return lines[h.line] end
-	function h.readAll() return text end
+	function h.readLine(with_trailing)
+		if cursor >= text:len() then return nil end
+		local lt_start, lt_end = text:find("\r?\n", cursor)
+		lt_start = lt_start or (text:len() + 1)
+		lt_end = lt_end or (text:len() + 1)
+		local seg = text:sub(cursor, with_trailing and lt_end or (lt_start - 1))
+		ccemux.echo(("%d %d %d %q %q"):format(cursor, lt_start, lt_end, text, text:sub(cursor)))
+		cursor = lt_end + 1
+		return seg
+	end
+	function h.read(count)
+		local count = count or 1
+		local seg = text:sub(cursor, cursor + count - 1)
+		cursor = cursor + count
+		return seg:len() ~= 0 and seg or nil
+	end
+	function h.readAll() local seg = text:sub(cursor) cursor = text:len() return seg:len() ~= 0 and seg or nil end
 	return h
 end
 
