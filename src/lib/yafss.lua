@@ -159,7 +159,6 @@ local function make_handle(text)
 		lt_start = lt_start or (text:len() + 1)
 		lt_end = lt_end or (text:len() + 1)
 		local seg = text:sub(cursor, with_trailing and lt_end or (lt_start - 1))
-		ccemux.echo(("%d %d %d %q %q"):format(cursor, lt_start, lt_end, text, text:sub(cursor)))
 		cursor = lt_end + 1
 		return seg
 	end
