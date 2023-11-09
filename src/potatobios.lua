@@ -1849,7 +1849,12 @@ function potatOS.send(m)
 	--potatOS.comment(tostring(os.getComputerID()), textutils.compact_serialize(m))
 end
 
-term.redirect(term.native())
+do
+    local w, h = term.native().getSize()
+    local win = window.create(term.native(), 1, 1, w, h)
+    term.redirect(win)
+    potatOS.screen = win
+end
 
 --[[
 Fix bug PS#DBC837F6
