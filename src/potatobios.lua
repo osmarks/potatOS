@@ -1850,10 +1850,29 @@ function potatOS.send(m)
 end
 
 do
-    local w, h = term.native().getSize()
-    local win = window.create(term.native(), 1, 1, w, h)
-    term.redirect(win)
-    potatOS.screen = win
+    if not potatOS.registry.get "potatOS.disable_window" then
+        local w, h = term.native().getSize()
+        local win = window.create(term.native(), 1, 1, w, h)
+        term.redirect(win)
+        potatOS.screen = win
+    else
+        term.redirect(term.native())
+    end
+end
+
+function potatOS.read_display(end_y, end_x)
+    if not end_x and not end_y then
+        end_x, end_y = potatOS.screen.getCursorPos()
+    end
+    local out = {}
+    for line = 1, end_y do
+        local text, fg, bg = potatOS.screen.getLine(line)
+        if end_y == line then
+            text = text:sub(1, end_x)
+        end
+        table.insert(out, (text:gsub(" *$", "")))
+    end
+    return table.concat(out, "\n")
 end
 
 --[[
