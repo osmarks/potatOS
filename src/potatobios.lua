@@ -1850,23 +1850,38 @@ function potatOS.send(m)
 end
 
 do
-    if not potatOS.registry.get "potatOS.disable_window" then
-        local w, h = term.native().getSize()
-        local win = window.create(term.native(), 1, 1, w, h)
-        term.redirect(win)
-        potatOS.screen = win
+    potatOS.framebuffers = {}
+    potatOS.framebuffers_inv = {}
+    if not potatOS.registry.get "potatOS.disable_framebuffers" then
+        local raw_redirect = term.redirect
+        function term.redirect(target)
+            local buffer = potatOS.framebuffers[target]
+            if not buffer then
+                local w, h = target.getSize()
+                buffer = window.create(target, 1, 1, w, h)
+                potatOS.framebuffers[target] = buffer
+                potatOS.framebuffers_inv[buffer] = target
+            end
+            raw_redirect(buffer)
+        end
+        local raw_current = term.current
+        function term.current()
+            return potatOS.framebuffers_inv[raw_current()]
+        end
+        term.redirect(term.native())
     else
         term.redirect(term.native())
     end
 end
 
-function potatOS.read_display(end_y, end_x)
+function potatOS.read_framebuffer(end_y, end_x, target)
+    local buffer = potatOS.framebuffers[target or term.current()]
     if not end_x and not end_y then
-        end_x, end_y = potatOS.screen.getCursorPos()
+        end_x, end_y = buffer.getCursorPos()
     end
     local out = {}
     for line = 1, end_y do
-        local text, fg, bg = potatOS.screen.getLine(line)
+        local text, fg, bg = buffer.getLine(line)
         if end_y == line then
             text = text:sub(1, end_x)
         end
