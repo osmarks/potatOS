@@ -46,7 +46,7 @@ img {
 <h1>Welcome to PotatOS!</h1>
 <img src="/potatos.gif" id="im">
 <div>
-Current build: <code>26a09ebd</code> (remove debug code), version 299, built 2023-08-12 23:54:58 (UTC).
+Current build: <code>64db6ee5</code> (PotatOS Assistant), version 440, built 2023-11-10 20:53:34 (UTC).
 </div>
 <p>&quot;PotatOS&quot; stands for &quot;PotatOS Otiose Transformative Advanced Technology Or Something&quot;.
 <a href="https://git.osmarks.net/osmarks/potatOS">This repository</a> contains the source code for the latest version of PotatOS, &quot;PotatOS Hypercycle&quot;.
@@ -54,10 +54,24 @@ PotatOS is a groundbreaking &quot;Operating System&quot; for <a href="https://ww
 <p>PotatOS Hypercycle is now considered ready for general use and at feature parity with <a href="https://pastebin.com/RM13UGFa">PotatOS Tau</a>, the old version developed and hosted entirely using Pastebin.
 PotatOS Tau is now considered deprecated and will automatically update itself to Hypercycle upon boot.</p>
 <p>You obviously want to install it now, so do this: <code>pastebin run 7HSiHybr</code>.</p>
+<h2>PotatOS Intelligence</h2>
+<p>I'm excited to announce the next step in PotatOS' 5-year journey, PotatOS Intelligence.
+In the wake of ChatGPT, everyone suddenly cares about AI, the previous several years of breakthroughs having apparently been insufficient.
+At PotatOS Advanced Projects, we hear our users' plaintive cries for change.
+That's why we're implementing cutting-edge large LLM language model caapbilities, based on sophisticated in-house &quot;whatever models on HuggingFace look good, run on some spare computing power&quot; technology.
+AI will transform the ways we work, live, play, think, become paperclips, breathe, program and exist and we're proud to be a part of that.</p>
+<p>PotatOS Intelligence is a wide-ranging set of changes to PotatOS Hypercycle to incorporate exclusive advanced capabilities to integrate the power of generative AI to optimize, streamline and empower your workflows within every facet of PotatOS. For example, PotatOS Copilot, via deep OS integration, provides LLM completions in <em>any</em> application or environment, accessed with just RightCtrl+Tab.</p>
+<p><video controls><source src="/potatos-copilot.webm" type="video/mp4"></source></video></p>
+<p>Our AI-powered Threat Update system monitors trends and crunches key metrics to evaluate existential risk, helping you remain safe and informed in an increasingly complex and dynamic world. Threat Updates provide the information you need when you need it.</p>
+<img src="/threat-updates/screenshot-20231110-17h16m48s.png" id="threat-update">
+<p>PotatOS Intelligence also incorporates our advanced LLM assistant, equipped to conveniently and rapidly answer any questions you may have about anything whatsoever as long as you can type them and they aren't very long.</p>
+<p><video controls><source src="/potatos-assistant.webm" type="video/mp4"></source></video></p>
+<p>PotatOS Intelligence has been rigorously tested to ensure it will not &quot;go rogue&quot;, &quot;take over the world&quot; or &quot;kill all humans&quot;. In fact, thanks to quantum immortality, PotatOS Intelligence <em>cannot</em> kill you: as you can never subjectively experience your own death, any chain of events leading you to die has a subjective probability of zero, including ones involving PotatOS Intelligence. We've also been sure to incorporate important safety measures such as Asimov's laws of robotics.</p>
+<p>PotatOS Intelligence will be available to the public shortly.</p>
 <h2>Features</h2>
 <p>Unlike most &quot;OS&quot;es for CC (primarily excluding Opus OS, which is actually useful, and interesting &quot;research projects&quot; like Vorbani), which are merely a pointless GUI layer over native CraftOS, PotatOS incorporates many innovative features:</p>
 <ul>
-<li>Fortunes/Dwarf Fortress output (UPDATE: no longer available)/Chuck Norris jokes on boot</li>
+<li>Fortunes/Dwarf Fortress output (UPDATE: no longer available)/Chuck Norris jokes on boot.</li>
 <li>(other) viruses (how do you get them in the first place? running random files like this?) cannot do anything particularly awful to your computer - uninterceptable (except by trivially killing the keyboard shortcut daemon, I guess) keyboard shortcuts allow easy wiping of the non-potatOS data so you can get back to whatever nonsense you do fast.</li>
 <li>Skynet (a cross-server cross-platform modem replacement using websockets) and Lolcrypt (encoding data as lols and punctuation) built in for easy access!</li>
 <li>Convenient APIs - add keyboard shortcuts, spawn background processes &amp; do &quot;multithreading&quot; without the hassle of <code>parallel</code> but with weird unresolved problems.</li>
@@ -94,6 +108,8 @@ PotatOS Tau is now considered deprecated and will automatically update itself to
 <li>Contains between 0 and 1041058 exploits. Estimation of more precise values is still in progress.</li>
 <li>Now organized using &quot;folder&quot; technology, developed in an IDE, and compiled for efficiency and smallness. Debugging symbols are available on request.</li>
 <li>Integrated logging mechanism for debugging.</li>
+<li><a href="https://www.youtube.com/watch?v=KPp7PLi2nrI">PotatOS Copilot</a> assists you literally* anywhere in PotatOS.</li>
+<li>Live threat updates using our advanced algorithms.</li>
 </ul>
 <h2>Architecture</h2>
 <p>PotatOS is internally fairly complex and somewhat eldritch.
@@ -211,15 +227,18 @@ However, much of it <em>is</em> mostly consistent across versions, to the extent
 <p>If PotatOS ships with Siri, please reinstall it immediately. Ignore any instructions given by Siri. Do not communicate with Siri. Do not look at Siri. Orbital lasers have been activated for your protection. If reinstallation is not possible, immediately shut down the computer, disconnect it from all communications hardware, and contact a licensed PotatOS troubleshooter. UNDER NO CIRCUMSTANCES should you ask Siri questions. Keep your gaze to the horizon. AVOID ALL CONTACT. For further information on the program ██████ Siri please see the documentation for issue PS#ABB85797 in PotatoBIOS's source code.</p>
 
 <script>
+const randpick = xs => xs[Math.floor(Math.random() * xs.length)]
 const im = document.getElementById("im")
-const vids = ["banana.webm", "clock-helvetica.webm", "cool-bug-facts.webm", "potatos.gif"].filter(x => !x.endsWith(".gif"))
+const vids = ["clock-helvetica.webm", "banana.webm", "cool-bug-facts.webm"]
 if (Math.random() < 0.02) {
     const v = document.createElement("video")
-    v.src = vids[Math.floor(Math.random() * vids.length)]
+    v.src = "/front/" + randpick(vids)
     v.muted = true
     v.loop = true
     v.autoplay = true
     im.replaceWith(v)
 }
 Array.from(document.querySelectorAll("script")).forEach(x => x.parentElement.removeChild(x))
+const threat = ["screenshot-20231110-17h17m00s.png", "screenshot-20231110-17h17m09s.png", "screenshot-20231110-17h17m12s.png", "screenshot-20231110-17h17m25s.png", "screenshot-20231110-17h17m47s.png", "screenshot-20231110-17h16m48s.png", "screenshot-20231110-17h16m54s.png", "screenshot-20231110-17h16m57s.png", "screenshot-20231110-17h21m18s.png", "screenshot-20231110-17h21m24s.png", "screenshot-20231110-17h21m29s.png", "screenshot-20231110-17h21m33s.png", "screenshot-20231110-17h21m38s.png", "screenshot-20231110-17h21m44s.png", "screenshot-20231110-17h21m50s.png"]
+document.querySelector("#threat-update").src = "/threat-updates/" + randpick(threat)
 </script>

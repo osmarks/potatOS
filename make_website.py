@@ -81,23 +81,26 @@ def privacy_policy():
 """
     script = open("privacy/script.js", "r").read()
     mdtext = cmarkgfm.markdown_to_html_with_extensions(out, cmarkgfmOptions.CMARK_OPT_FOOTNOTES | cmarkgfmOptions.CMARK_OPT_UNSAFE)
-    return f"""<!DOCTYPE html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>PotatOS Privacy Policy</title><style>{local_css}</style>\n{mdtext}<div id=contentend></div><script>{script}</script>"""
+    return f"""<!DOCTYPE html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="description" content="The privacy policy of PotatOS."><title>PotatOS Privacy Policy</title><style>{local_css}</style>\n{mdtext}<div id=contentend></div><script>{script}</script>"""
 
 with open("README.md") as f:
     html = commonmark.commonmark("\n".join(f.read().splitlines()[1:]))
 
 gif_replacer = f"""
+const randpick = xs => xs[Math.floor(Math.random() * xs.length)]
 const im = document.getElementById("im")
-const vids = {json.dumps(os.listdir("images"))}.filter(x => !x.endsWith(".gif"))
+const vids = {json.dumps(os.listdir("images/front"))}
 if (Math.random() < 0.02) {{
     const v = document.createElement("video")
-    v.src = vids[Math.floor(Math.random() * vids.length)]
+    v.src = "/front/" + randpick(vids)
     v.muted = true
     v.loop = true
     v.autoplay = true
     im.replaceWith(v)
 }}
 Array.from(document.querySelectorAll("script")).forEach(x => x.parentElement.removeChild(x))
+const threat = {json.dumps(os.listdir("images/threat-updates"))}
+document.querySelector("#threat-update").src = "/threat-updates/" + randpick(threat)
 """
 
 with open("manifest", "r") as f:
@@ -125,7 +128,12 @@ html = f"""
 
 os.makedirs("website/privacy", exist_ok=True)
 for im in os.listdir("images"):
-    shutil.copy(os.path.join("images", im), os.path.join("website", im))
+    src, dst = os.path.join("images", im), os.path.join("website", im)
+    if os.path.isdir(src):
+        if os.path.exists(dst): shutil.rmtree(dst)
+        shutil.copytree(src, dst)
+    else:
+        shutil.copy(src, dst)
 with open("website/index.html", "w") as f:
     f.write(html)
 with open("website/privacy/index.html", "w") as f:

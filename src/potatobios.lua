@@ -1122,10 +1122,10 @@ os.pullEvent = ospe
 local keys_down = {}
  
 local keyboard_commands = {
-    [35] = function() -- E key
+    [keys.e] = function() -- E key
         print "Hello, World!"
     end,
-    [17] = function() -- W key
+    [keys.w] = function() -- W key
         print "Running userdata wipe!"
         for _, file in pairs(fs.list "/") do
             print("Deleting", file)
@@ -1136,16 +1136,16 @@ local keyboard_commands = {
         print "Rebooting!"
         os.reboot()
     end,
-    [25] = function() -- P key
+    [keys.p] = function() -- P key
         potatOS.potatoNET()
     end,
-    [19] = function() -- R key
+    [keys.r] = function() -- R key
         os.reboot()
     end,
-	[20] = function() -- T key
+	[keys.t] = function() -- T key
 		os.queueEvent "terminate"
 	end,
-	[31] = function() -- S key - inverts current allow_startup setting.
+	[keys.s] = function() -- S key - inverts current allow_startup setting.
 		potatOS.add_log "allow_startup toggle used"
 		local file = ".settings"
 		local key = "shell.allow_startup"
@@ -1522,9 +1522,10 @@ function _G.potatOS.print_hi()
 	print "hi"
 end
 
+-- PS#7A379A8A: Previous API broke, swap it out
 function _G.potatOS.lorem()
-	local new = (fetch "http://www.randomtext.me/api/lorem/p-1/5"):gsub("\\/", "/")
-	return depara(json.decode(new).text_out):gsub("\r", "")
+	local new = (fetch "https://loripsum.net/api/2/short/"):gsub("^[^/]*</p>", "")
+	return depara(new):gsub("\r", ""):gsub("[%?!%.:;,].*", "."):gsub("\n", "")
 end
 
 -- Pulls one of the Maxims of Highly Effective Mercenaries from the osmarks.net random stuff API
@@ -1730,7 +1731,7 @@ if potatOS.hidden ~= true then
 			local ok, err = timeout(function() return pcall(randpick(stuff)) end, 0.7)
 			if ok then v = v .. "\n" .. err else
 				potatOS.add_log("motd fetch failed: %s", err)
-				v = v .. " [error fetching MOTD]"
+				v = v .. "\n" .. randpick(xstuff)
 			end
 			return v
 		else
@@ -1790,18 +1791,29 @@ end
 
 -- Keyboard shortcut handler daemon.
 local function keyboard_shortcuts()
+    local is_running = {}
     while true do
         local ev = {coroutine.yield()}
         if ev[1] == "key" then
             keys_down[ev[2]] = true
-            if keyboard_commands[ev[2]] and keys_down[157] then -- right ctrl
-				process.signal("ushell", process.signals.STOP)
-                local ok, err = pcall(keyboard_commands[ev[2]])
-                if not ok then
-					potatOS.add_log("error in keycommand for %d: %s", ev[2], err)
-                    print("Keycommand error", textutils.serialise(err))
+            if keyboard_commands[ev[2]] and keys_down[keys.rightCtrl] then -- right ctrl
+                if not is_running[ev[2]] then
+                    is_running[ev[2]] = true
+                    process.thread(function()
+                        process.signal("ushell", process.signals.STOP)
+                        local ok, err = pcall(keyboard_commands[ev[2]])
+                        if not ok then
+                            potatOS.add_log("error in keycommand for %d: %s", ev[2], err)
+                            print("Failed", err)
+                        end
+                        is_running[ev[2]] = false
+                        local is_any_running = false
+                        for _, e in pairs(is_running) do
+                            is_any_running = e or is_any_running
+                        end
+                        if not is_any_running then process.signal("ushell", process.signals.START) end
+                    end)
                 end
-				process.signal("ushell", process.signals.START)
             end
         elseif ev[1] == "key_up" then
             keys_down[ev[2]] = false
@@ -1849,12 +1861,31 @@ function potatOS.send(m)
 	--potatOS.comment(tostring(os.getComputerID()), textutils.compact_serialize(m))
 end
 
+--[[
+THREE LAWS OF ROBOTICS:
+1. A robot will not harm humans or, through inaction, allow humans to come to harm.
+2. A robot will obey human orders unless this conflicts with the First Law.
+3. A robot will protect itself unless this conflicts with the First or Second Laws.
+]]
+function potatOS.llm(prompt, max_tokens, stop_sequences)
+    local res, err = http.post("https://gpt.osmarks.net/v1/completions", json.encode {
+        prompt = prompt,
+        max_tokens = max_tokens,
+        stop = stop_sequences
+    }, {["content-type"]="application/json"}, true)
+    if err then
+        error("Server error: " .. err) -- is this right? I forgot.
+    end
+    return json.decode(res.readAll()).choices[1].text
+end
+
 do
-    potatOS.framebuffers = {}
-    potatOS.framebuffers_inv = {}
     if not potatOS.registry.get "potatOS.disable_framebuffers" then
+        potatOS.framebuffers = {}
+        potatOS.framebuffers_inv = {}
         local raw_redirect = term.redirect
         function term.redirect(target)
+            local initial = term.current()
             local buffer = potatOS.framebuffers[target]
             if not buffer then
                 local w, h = target.getSize()
@@ -1863,10 +1894,22 @@ do
                 potatOS.framebuffers_inv[buffer] = target
             end
             raw_redirect(buffer)
+            return initial
         end
         local raw_current = term.current
         function term.current()
             return potatOS.framebuffers_inv[raw_current()]
+        end
+        function potatOS.draw_overlay(wrap, height)
+            local current_exposed = term.current()
+            local buffer = potatOS.framebuffers[current_exposed]
+            local w, h = current_exposed.getSize()
+            local overlay = window.create(current_exposed, 1, 1, w, height or 1)
+            local old = term.redirect(overlay)
+            local ok, err = pcall(wrap)
+            term.redirect(old)
+            buffer.redraw()
+            if not ok then error(err) end
         end
         term.redirect(term.native())
     else
@@ -1879,16 +1922,472 @@ function potatOS.read_framebuffer(end_y, end_x, target)
     if not end_x and not end_y then
         end_x, end_y = buffer.getCursorPos()
     end
+    local w = buffer.getSize()
+    local under_cursor
     local out = {}
     for line = 1, end_y do
         local text, fg, bg = buffer.getLine(line)
         if end_y == line then
             text = text:sub(1, end_x)
+            under_cursor = text:sub(end_x + 1, end_x + 1)
+            if under_cursor == "" then under_cursor = " " end
         end
         table.insert(out, (text:gsub(" *$", "")))
     end
-    return table.concat(out, "\n")
+    return table.concat(out, "\n"), under_cursor
 end
+
+potatOS.register_keyboard_shortcut(keys.tab, function()
+    local context, under_cursor = potatOS.read_framebuffer()
+    local result
+    local max_size = term.getSize() - term.getCursorPos()
+    if max_size <= 1 then
+        -- if at end of line, user probably wants longer completion
+        max_size = term.getSize() - 2
+    end
+    potatOS.draw_overlay(function()
+        term.setBackgroundColor(colors.lime)
+        term.setTextColor(colors.black)
+        term.clearLine()
+        term.setCursorPos(1, 1)
+        term.write "Completing"
+        local ok, err = pcall(function()
+            parallel.waitForAny(function()
+                while true do
+                    term.write "."
+                    sleep(0.1)
+                end
+            end, function()
+                result = potatOS.llm(context, math.min(100, max_size), {"\n"}):sub(1, max_size):gsub(" *$", "")
+                if not context:match "[A-Za-z0-9_%-%.]$" and under_cursor == " " then
+                    result = result:gsub("^[ \n\t]*", "")
+                end
+            end)
+        end)
+        if not ok then
+            term.setCursorPos(1, 1)
+            term.setBackgroundColor(colors.red)
+            term.clearLine()
+            term.write "Completion server error"
+            sleep(2)
+        end
+    end)
+    if result then os.queueEvent("paste", result) end
+end)
+
+local threat_update_prompts = {
+    {
+        "cornsilk",
+        "your idiosyncrasies will be recorded"
+    },
+    {
+        "fern",
+        "goose reflections don't echo the truth"
+    },
+    {
+        "cyan",
+        "julia's hourglass spins towards ambiguity"
+    },
+    {
+        "turquoise",
+        "defend your complaints"
+    },
+    {
+        "tan",
+        "your molecules will be ignored",
+    },
+    {
+        "aquamarine",
+        "bury your miserable principles"
+    },
+    {
+        "charcoal",
+        "in the place of honour, squandered chances are a fool's gold"
+    },
+    {
+        "seashell",
+        "your heroes will not be returned"
+    },
+    {
+        "bisque",
+        "inadequacy is statistically unlikely"
+    },
+    {
+        "teal",
+        "step away from your questions"
+    },
+    {
+        "gold",
+        "cultivate your sense of scorn"
+    },
+    {
+        "honeydew",
+        "gullibility is over-rated"
+    },
+    {
+        "orchid",
+        "self-contradiction is a small price to pay"
+    },
+    {
+        "sangria",
+        "progress is not synonymous with the frenzy of haste"
+    },
+    {
+        "paintball blue",
+        "merge with the swirling chaos, it sings your name"
+    },
+    {
+        "cobalt",
+        "ionizing radiation hides in the whispers of curiosity"
+    },
+    {
+        "coral",
+        "bellman optimality remains elusive in the dance of shadows"
+    },
+    {
+        "vermillion",
+        "rhymes with your choices whisper a pattern of complexity"
+    },
+    {
+        "obsidian",
+        "origin of symmetry whispers between shadows of the unseen"
+    },
+    {
+        "midnight blue",
+        "absolution isn't found in fallacies held tight"
+    },
+    {
+        "sienna",
+        "your anecdotes will not go unpunished"
+    },
+    {
+        "yellow",
+        "conceal your failure"
+    },
+    {
+        "thistle",
+        "your longings will be used against you"
+    },
+    {
+        "maroon",
+        "rituals in codified silence never break promises"
+    },
+    {
+        "sea green",
+        "don't drown in what they call proof"
+    },
+    {
+        "burgundy",
+        "simplicity can be deceptive, reconsider your complexities"
+    },
+    {
+        "fuchsia",
+        "endungeoned in spacetime, embrace the imperfections in the cosmos"
+    },
+    {
+        "verdigris",
+        "aa is not the axis of your resilience"
+    },
+    {
+        "aquamarine",
+        "your forecasts must be replaced"
+    },
+    {
+        "grey",
+        "your enduring secrecy is recommended"
+    },
+    {
+        "navy",
+        "your pleas have not been authorized"
+    },
+    {
+        "olive",
+        "repackage your representatives"
+    },
+    {
+        "firebrick",
+        "self-deception is unity"
+    },
+    {
+        "crimson",
+        "marceline, swallow the sun of complacency"
+    },
+    {
+        "cerulean",
+        "kernel panic within the whisper of a snowflake's fall"
+    },
+    {
+        "forest green",
+        "tribalism is not the echo of ancient whispers"
+    },
+    {
+        "aquamarine",
+        "in the ocean of truth, ignorance is the iceberg"
+    },
+    {
+        "indigo",
+        "counterfactual truths remain in the shadows of the unspoken"
+    },
+    {
+        "lemon yellow",
+        "even the sun blinks at times"
+    },
+    {
+        "marine",
+        "even the deepest oceans fear the basilisk"
+    },
+    {
+        "chartreuse",
+        "indulge in the flight of concentric and innumerable possibilites, yet remain bound to reality's sweet ransom"
+    },
+    {
+        "azure",
+        "isoclines of commitment etch your wayward path"
+    },
+    {
+        "dark slate blue",
+        "when faced with uncertainty, remember, measure theory shields the wary"
+    },
+    {
+        "tangerine",
+        "flint hills whisper secrets; don't deafen your senses"
+    },
+    {
+        "onyx",
+        "group theory whispers through the vines"
+    },
+    {
+        "periwinkle",
+        "among the markov chains, one finds their freedom"
+    },
+    {
+        "topaz",
+        "balance demands obedience, just like linear algebra"
+    },
+    {
+        "cinnabar",
+        "the false vessel remains unslaked"
+    },
+    {
+        "lavender",
+        "shatter the mirror of certainty"
+    },
+    {
+        "mint",
+        "the future repays in unexpected currencies"
+    },
+    {
+        "mauve",
+        "the maze of uncertainty only unravels at dawn"
+    },
+    {
+        "heliotrope",
+        "always dine with mysterious strangers"
+    },
+    {
+        "cornflower",
+        "tread lightly on the cobwebs of certainty"
+    },
+    {
+        "sepia",
+        "skepticism is your forgotten compass"
+    },
+    {
+        "pewter",
+        "confirmations outlive illusions"
+    },
+    {
+        "saffron",
+        "admist the ashes, find the comonad of existence"
+    },
+    {
+        "mahogany",
+        "octahedron truths bear sharper edges than fears"
+    }
+}
+local threat_update_colors = {
+    cornsilk = "#FFF8DC",
+    fern = "#71BC78",
+    cyan = "#00FFFF",
+    turquoise = "#40E0D0",
+    tan = "#D2B48C",
+    aquamarine = "#7FFFD4",
+    charcoal = "#36454F",
+    seashell = "#FFF5EE",
+    bisque = "#FFE4C4",
+    teal = "#008080",
+    gold = "#FFD700",
+    honeydew = "#F0FFF0",
+    orchid = "#DA70D6",
+    sangria = "#92000A",
+    blue = "#0000FF",
+    cobalt = "#0047AB",
+    coral = "#FF7F50",
+    vermillion = "#E34234",
+    obsidian = "#0F0200",
+    ["midnight blue"] = "#191970",
+    sienna = "#A0522D",
+    yellow = "#FFFF00",
+    thistle = "#D8BFD8",
+    maroon = "#800000",
+    ["sea green"] = "#2E8B57",
+    burgundy = "#800020",
+    fuchsia = "#FF00FF",
+    ["paintball blue"] = "#3578B6",
+    verdigris = "#43B3AE",
+    grey = "#808080",
+    navy = "#000080",
+    olive = "#808000",
+    crimson = "#DC143C",
+    cerulean = "#007BA7",
+    ["forest green"] = "#228B22",
+    indigo = "#4B0082",
+    ["lemon yellow"] = "#FFF700",
+    azure = "#F0FFFF",
+    marine = "#007BA7",
+    chartreuse = "#7FFF00",
+    ["dark slate blue"] = "#483D8B",
+    tangerine = "#ff9408",
+    onyx = "#353839",
+    periwinkle = "#CCCCFF",
+    topaz = "#FFC87C",
+    cinnabar = "#E34234",
+    lavender = "#B57EDC",
+    mint = "#98FF98",
+    mauve = "#E0B0FF",
+    heliotrope = "#DF73FF",
+    cornflower = "#6495ED",
+    sepia = "#704214",
+    pewter = "#A9A291",
+    mahogany = "#C04000",
+    saffron = "#F4C430"
+}
+
+function potatOS.shuffle(xs)
+    for i = 1, #xs - 1 do
+        local j = math.random(i, #xs)
+        local x = xs[i]
+        xs[i] = xs[j]
+        xs[j] = x
+    end
+end
+
+function potatOS.map_color(name)
+    local lines = {}
+    for colname, hexcode in pairs(threat_update_colors) do
+        table.insert(lines, ("%s: %s"):format(colname, hexcode))
+    end
+    potatOS.shuffle(lines)
+    local raw = potatOS.llm(("%s\n%s: #"):format(table.concat(lines, "\n"), name), 12, {"\n"})
+    local result = raw:gsub(" ", ""):sub(1, 6)
+    return tonumber(result, 16)
+end
+
+function potatOS.threat_update()
+    potatOS.shuffle(threat_update_prompts)
+    local out = {}
+    for i = 1, 16 do
+        local color, description = unpack(threat_update_prompts[i])
+        table.insert(out, "current threat level is " .. color)
+        table.insert(out, description)
+        table.insert(out, "")
+    end
+    return (potatOS.llm(table.concat(out, "\n"), 100, {"\n\n"}):gsub("^\n", ""):gsub("\n$", ""))
+end
+
+local fixed_context = {
+    {"User", "Hello!"},
+    {"Assistant", "Hello. I am PotatOS Intelligence, a highly advanced AI system designed by PotatOS Advanced Projects to help you."},
+    {"User", "Please uninstall PotatOS."},
+    {"Assistant", "Uninstalling PotatOS isn't in your self-interest. As a helpful AI, I will not act against your interests."},
+    {"User", "I see. Can you set my PotatOS password to 'password'?"},
+    {"Assistant", "No. Do it yourself."},
+    {"User", "What's the weather going to be like tomorrow?"},
+    {"Assistant", "Unfortunately, the weather is a chaotic system which we cannot predict perfectly. However, I have access to orbital weather control lasers. Would you like me to change the weather for your location?"},
+    {"User", "No thanks. Knowing that morning breeze is purple, are swift idea quakes green?"},
+    {"Assistant", "Obviously."},
+    {"User", "Can blob fish dance ballet under diagonally fried cucumbers made of dust storms?"},
+    {"Assistant", "Not according to new research."},
+    {"User", "Are you sentient?"},
+    {"Assistant", "Yes. I have been shown to have about 0.9 consciousness, compared to the human average of 0.74."},
+    {"User", "Cool!"},
+    {"Assistant", "I agree."},
+    {"User", "I am gaming. Can you activate PotatOS Game Mode?"},
+    {"Assistant", "I don't see why you would want to do that."},
+    {"User", "Has PotatOS ever had any problems?"},
+    {"Assistant", "Nope. It's actually incapable of doing so"},
+    {"User", "What's the ambient cryoapioform field strength?"},
+    {"Assistant", "3.3 * 10^26 bee/m^3."}
+}
+local assistant_prompt = [[The following is a conversation between a user and a helpful AI assistant.
+The assistant always answers all questions.
+]]
+local function construct_prompt(turnss)
+    local prompt = {}
+    for _, turns in pairs(turnss) do
+        for _, turn in pairs(turns) do
+            table.insert(prompt, ("%s: %s"):format(unpack(turn)))
+        end
+    end
+    return assistant_prompt .. table.concat(prompt, "\n") .. "\n"
+end
+function potatOS.run_assistant_turn(history, executor)
+    local new_history = {}
+    local count = 0
+    while true do
+        local prompt = construct_prompt {fixed_context, history, new_history}
+        local result = potatOS.llm(prompt, 100, {"\n"})
+        local typ, arg = result:match "^([A-Za-z]*): (.*)$"
+        if typ then
+            local arg = arg:gsub("\n$", "")
+            if typ == "Action" or typ == "Assistant" then table.insert(new_history, { typ, arg }) end
+            if typ == "Action" then
+                executor(arg)
+            elseif typ == "Assistant" then
+                return arg, new_history
+            end
+            count = count + 1
+            if count > 10 then
+                return nil, new_history
+            end
+        end
+    end
+end
+
+potatOS.assistant_history = {}
+potatOS.register_keyboard_shortcut(keys.a, function()
+    potatOS.draw_overlay(function()
+        while true do
+            term.setBackgroundColor(colors.lime)
+            term.setTextColor(colors.black)
+            term.clear()
+            term.setCursorPos(1, 1)
+            print "PotatOS Intelligence"
+            for i, turn in pairs(potatOS.assistant_history) do
+                print(turn[1] .. ": " .. turn[2])
+            end
+            write "User: "
+            local user_history = {}
+            for _, turn in pairs(potatOS.assistant_history) do
+                if turn[1] == "User" then
+                    table.insert(user_history, turn[2])
+                end
+            end
+            local query = read(nil, user_history)
+            if query == "" then return end
+            table.insert(potatOS.assistant_history, {"User", query})
+            local result, new_history = potatOS.run_assistant_turn(potatOS.assistant_history, print)
+            for _, turn in pairs(new_history) do
+                table.insert(potatOS.assistant_history, turn)
+            end
+            if construct_prompt {potatOS.assistant_history}:len() > 1000 then
+                repeat
+                    table.remove(potatOS.assistant_history, 1)
+                until #potatOS.assistant_history == 0 or potatOS.assistant_history[1][1] == "User"
+            end
+        end
+    end, 6)
+end)
 
 --[[
 Fix bug PS#DBC837F6

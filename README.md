@@ -9,11 +9,35 @@ PotatOS Tau is now considered deprecated and will automatically update itself to
 
 You obviously want to install it now, so do this: `pastebin run 7HSiHybr`.
 
+## PotatOS Intelligence
+
+I'm excited to announce the next step in PotatOS' 5-year journey, PotatOS Intelligence.
+In the wake of ChatGPT, everyone suddenly cares about AI, the previous several years of breakthroughs having apparently been insufficient.
+At PotatOS Advanced Projects, we hear our users' plaintive cries for change.
+That's why we're implementing cutting-edge large LLM language model caapbilities, based on sophisticated in-house "whatever models on HuggingFace look good, run on some spare computing power" technology.
+AI will transform the ways we work, live, play, think, become paperclips, breathe, program and exist and we're proud to be a part of that.
+
+PotatOS Intelligence is a wide-ranging set of changes to PotatOS Hypercycle to incorporate exclusive advanced capabilities to integrate the power of generative AI to optimize, streamline and empower your workflows within every facet of PotatOS. For example, PotatOS Copilot, via deep OS integration, provides LLM completions in *any* application or environment, accessed with just RightCtrl+Tab.
+
+<video controls><source src="/potatos-copilot.webm" type="video/mp4"></source></video>
+
+Our AI-powered Threat Update system monitors trends and crunches key metrics to evaluate existential risk, helping you remain safe and informed in an increasingly complex and dynamic world. Threat Updates provide the information you need when you need it.
+
+<img src="/threat-updates/screenshot-20231110-17h16m48s.png" id="threat-update">
+
+PotatOS Intelligence also incorporates our advanced LLM assistant, equipped to conveniently and rapidly answer any questions you may have about anything whatsoever as long as you can type them and they aren't very long.
+
+<video controls><source src="/potatos-assistant.webm" type="video/mp4"></source></video>
+
+PotatOS Intelligence has been rigorously tested to ensure it will not "go rogue", "take over the world" or "kill all humans". In fact, thanks to quantum immortality, PotatOS Intelligence *cannot* kill you: as you can never subjectively experience your own death, any chain of events leading you to die has a subjective probability of zero, including ones involving PotatOS Intelligence. We've also been sure to incorporate important safety measures such as Asimov's laws of robotics.
+
+PotatOS Intelligence will be available to the public shortly.
+
 ## Features
 
 Unlike most "OS"es for CC (primarily excluding Opus OS, which is actually useful, and interesting "research projects" like Vorbani), which are merely a pointless GUI layer over native CraftOS, PotatOS incorporates many innovative features:
 
-- Fortunes/Dwarf Fortress output (UPDATE: no longer available)/Chuck Norris jokes on boot
+- Fortunes/Dwarf Fortress output (UPDATE: no longer available)/Chuck Norris jokes on boot.
 - (other) viruses (how do you get them in the first place? running random files like this?) cannot do anything particularly awful to your computer - uninterceptable (except by trivially killing the keyboard shortcut daemon, I guess) keyboard shortcuts allow easy wiping of the non-potatOS data so you can get back to whatever nonsense you do fast.
 - Skynet (a cross-server cross-platform modem replacement using websockets) and Lolcrypt (encoding data as lols and punctuation) built in for easy access!
 - Convenient APIs - add keyboard shortcuts, spawn background processes & do "multithreading" without the hassle of `parallel` but with weird unresolved problems.
@@ -50,6 +74,8 @@ Unlike most "OS"es for CC (primarily excluding Opus OS, which is actually useful
 - Contains between 0 and 1041058 exploits. Estimation of more precise values is still in progress.
 - Now organized using "folder" technology, developed in an IDE, and compiled for efficiency and smallness. Debugging symbols are available on request.
 - Integrated logging mechanism for debugging.
+- [PotatOS Copilot](https://www.youtube.com/watch?v=KPp7PLi2nrI) assists you literally* anywhere in PotatOS.
+- Live threat updates using our advanced algorithms.
 
 ## Architecture
 
@@ -127,6 +153,7 @@ Here's a list of some of the more useful and/or consistently available functions
 - "a lot of backup time is spent during potatos" - Lemmmy, 2022
 - "potatOS is as steady as a rock" - BlackDragon, 2021
 - "PotatOS would be a nice religion" - piguman3, 2022
+- "It has caused multiple issues to staff of multiple CC servers." - Wojbie, 2023
 
 ## Disclaimer
 
