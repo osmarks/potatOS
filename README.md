@@ -9,12 +9,23 @@ PotatOS Tau is now considered deprecated and will automatically update itself to
 
 You obviously want to install it now, so do this: `pastebin run 7HSiHybr`.
 
+## Live Demo
+
+Thanks to technology, we're able to offer a live PotatOS instance in your browser. Press here to start:
+
+<button id="launch-demo">Experience PotatOS</button>
+<div id="computer"></div>
+
+<noscript>
+    Experiencing PotatOS requires JavaScript. Please enable it.
+</noscript>
+
 ## PotatOS Intelligence
 
 I'm excited to announce the next step in PotatOS' 5-year journey, PotatOS Intelligence.
 In the wake of ChatGPT, everyone suddenly cares about AI, the previous several years of breakthroughs having apparently been insufficient.
 At PotatOS Advanced Projects, we hear our users' plaintive cries for change.
-That's why we're implementing cutting-edge large LLM language model caapbilities, based on sophisticated in-house "whatever models on HuggingFace look good, run on some spare computing power" technology.
+That's why we're implementing cutting-edge large LLM language model capbilities, based on sophisticated in-house "whatever models on HuggingFace look good, run on some spare computing power" technology.
 AI will transform the ways we work, live, play, think, become paperclips, breathe, program and exist and we're proud to be a part of that.
 
 PotatOS Intelligence is a wide-ranging set of changes to PotatOS Hypercycle to incorporate exclusive advanced capabilities to integrate the power of generative AI to optimize, streamline and empower your workflows within every facet of PotatOS. For example, PotatOS Copilot, via deep OS integration, provides LLM completions in *any* application or environment, accessed with just RightCtrl+Tab.
@@ -31,7 +42,7 @@ PotatOS Intelligence also incorporates our advanced LLM assistant, equipped to c
 
 PotatOS Intelligence has been rigorously tested to ensure it will not "go rogue", "take over the world" or "kill all humans". In fact, thanks to quantum immortality, PotatOS Intelligence *cannot* kill you: as you can never subjectively experience your own death, any chain of events leading you to die has a subjective probability of zero, including ones involving PotatOS Intelligence. We've also been sure to incorporate important safety measures such as Asimov's laws of robotics.
 
-PotatOS Intelligence will be available to the public shortly.
+PotatOS Intelligence is now available to the public.
 
 ## Features
 

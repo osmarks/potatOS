@@ -2338,6 +2338,7 @@ function potatOS.run_assistant_turn(history, executor)
         local prompt = construct_prompt {fixed_context, history, new_history}
         local result = potatOS.llm(prompt, 100, {"\n"})
         local typ, arg = result:match "^([A-Za-z]*): (.*)$"
+        ccemux.echo(textutils.serialise(result))
         if typ then
             local arg = arg:gsub("\n$", "")
             if typ == "Action" or typ == "Assistant" then table.insert(new_history, { typ, arg }) end

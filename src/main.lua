@@ -866,6 +866,7 @@ local function download_files(manifest_data, needed_files)
 		table.insert(fns, function()
 			add_log("downloading %s", file)
 			local url = base_URL .. "/" .. file
+			write "."
 			local h = assert(http.get(url, nil, true))
 			local x = h.readAll()
 			h.close()
@@ -873,6 +874,7 @@ local function download_files(manifest_data, needed_files)
 			if (manifest_data.sizes and manifest_data.sizes[file] and manifest_data.sizes[file] ~= #x) or manifest_data.files[file] ~= hexsha then 
 				error(("hash mismatch on %s %s (expected %s, got %s)"):format(file, url, manifest_data.files[file], hexsha)) end
 			fwrite(file, x)
+			write "."
 			count = count + 1
 		end)
 	end

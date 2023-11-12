@@ -39,14 +39,25 @@ ul p, ol p {
     margin: 0;
 }
 
-img {
+img, video {
     width: 100%;
+}
+
+button {
+    width: 100%;
+    border: 1px solid gray;
+    padding: 1em;
+}
+
+#computer {
+    width: 100%;
+    border: none;
 }
 </style>
 <h1>Welcome to PotatOS!</h1>
 <img src="/potatos.gif" id="im">
 <div>
-Current build: <code>64db6ee5</code> (PotatOS Assistant), version 440, built 2023-11-10 20:53:34 (UTC).
+Current build: <code>a1f40a39</code> (debug), version 443, built 2023-11-10 21:56:05 (UTC).
 </div>
 <p>&quot;PotatOS&quot; stands for &quot;PotatOS Otiose Transformative Advanced Technology Or Something&quot;.
 <a href="https://git.osmarks.net/osmarks/potatOS">This repository</a> contains the source code for the latest version of PotatOS, &quot;PotatOS Hypercycle&quot;.
@@ -54,11 +65,18 @@ PotatOS is a groundbreaking &quot;Operating System&quot; for <a href="https://ww
 <p>PotatOS Hypercycle is now considered ready for general use and at feature parity with <a href="https://pastebin.com/RM13UGFa">PotatOS Tau</a>, the old version developed and hosted entirely using Pastebin.
 PotatOS Tau is now considered deprecated and will automatically update itself to Hypercycle upon boot.</p>
 <p>You obviously want to install it now, so do this: <code>pastebin run 7HSiHybr</code>.</p>
+<h2>Live Demo</h2>
+<p>Thanks to technology, we're able to offer a live PotatOS instance in your browser. Press here to start:</p>
+<p><button id="launch-demo">Experience PotatOS</button></p>
+<div id="computer"></div>
+<noscript>
+    Experiencing PotatOS requires JavaScript. Please enable it.
+</noscript>
 <h2>PotatOS Intelligence</h2>
 <p>I'm excited to announce the next step in PotatOS' 5-year journey, PotatOS Intelligence.
 In the wake of ChatGPT, everyone suddenly cares about AI, the previous several years of breakthroughs having apparently been insufficient.
 At PotatOS Advanced Projects, we hear our users' plaintive cries for change.
-That's why we're implementing cutting-edge large LLM language model caapbilities, based on sophisticated in-house &quot;whatever models on HuggingFace look good, run on some spare computing power&quot; technology.
+That's why we're implementing cutting-edge large LLM language model capbilities, based on sophisticated in-house &quot;whatever models on HuggingFace look good, run on some spare computing power&quot; technology.
 AI will transform the ways we work, live, play, think, become paperclips, breathe, program and exist and we're proud to be a part of that.</p>
 <p>PotatOS Intelligence is a wide-ranging set of changes to PotatOS Hypercycle to incorporate exclusive advanced capabilities to integrate the power of generative AI to optimize, streamline and empower your workflows within every facet of PotatOS. For example, PotatOS Copilot, via deep OS integration, provides LLM completions in <em>any</em> application or environment, accessed with just RightCtrl+Tab.</p>
 <p><video controls><source src="/potatos-copilot.webm" type="video/mp4"></source></video></p>
@@ -67,7 +85,7 @@ AI will transform the ways we work, live, play, think, become paperclips, breath
 <p>PotatOS Intelligence also incorporates our advanced LLM assistant, equipped to conveniently and rapidly answer any questions you may have about anything whatsoever as long as you can type them and they aren't very long.</p>
 <p><video controls><source src="/potatos-assistant.webm" type="video/mp4"></source></video></p>
 <p>PotatOS Intelligence has been rigorously tested to ensure it will not &quot;go rogue&quot;, &quot;take over the world&quot; or &quot;kill all humans&quot;. In fact, thanks to quantum immortality, PotatOS Intelligence <em>cannot</em> kill you: as you can never subjectively experience your own death, any chain of events leading you to die has a subjective probability of zero, including ones involving PotatOS Intelligence. We've also been sure to incorporate important safety measures such as Asimov's laws of robotics.</p>
-<p>PotatOS Intelligence will be available to the public shortly.</p>
+<p>PotatOS Intelligence is now available to the public.</p>
 <h2>Features</h2>
 <p>Unlike most &quot;OS&quot;es for CC (primarily excluding Opus OS, which is actually useful, and interesting &quot;research projects&quot; like Vorbani), which are merely a pointless GUI layer over native CraftOS, PotatOS incorporates many innovative features:</p>
 <ul>
@@ -183,6 +201,7 @@ However, much of it <em>is</em> mostly consistent across versions, to the extent
 <li>&quot;a lot of backup time is spent during potatos&quot; - Lemmmy, 2022</li>
 <li>&quot;potatOS is as steady as a rock&quot; - BlackDragon, 2021</li>
 <li>&quot;PotatOS would be a nice religion&quot; - piguman3, 2022</li>
+<li>&quot;It has caused multiple issues to staff of multiple CC servers.&quot; - Wojbie, 2023</li>
 </ul>
 <h2>Disclaimer</h2>
 <p>We are not responsible for</p>
@@ -241,4 +260,15 @@ if (Math.random() < 0.02) {
 Array.from(document.querySelectorAll("script")).forEach(x => x.parentElement.removeChild(x))
 const threat = ["screenshot-20231110-17h17m00s.png", "screenshot-20231110-17h17m09s.png", "screenshot-20231110-17h17m12s.png", "screenshot-20231110-17h17m25s.png", "screenshot-20231110-17h17m47s.png", "screenshot-20231110-17h16m48s.png", "screenshot-20231110-17h16m54s.png", "screenshot-20231110-17h16m57s.png", "screenshot-20231110-17h21m18s.png", "screenshot-20231110-17h21m24s.png", "screenshot-20231110-17h21m29s.png", "screenshot-20231110-17h21m33s.png", "screenshot-20231110-17h21m38s.png", "screenshot-20231110-17h21m44s.png", "screenshot-20231110-17h21m50s.png"]
 document.querySelector("#threat-update").src = "/threat-updates/" + randpick(threat)
+const demoButton = document.querySelector("#launch-demo")
+demoButton.addEventListener("click", () => {
+    const node = document.createElement("iframe")
+    node.src = "/computer.html"
+    node.id = "computer"
+    demoButton.parentNode.parentNode.insertBefore(node, demoButton.parentNode.nextSibling)
+    demoButton.remove()
+    window.addEventListener("message", e => {
+        document.querySelector("#computer").style.height = `${e.data}px`
+    })
+})
 </script>

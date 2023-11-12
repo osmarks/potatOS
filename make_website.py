@@ -35,8 +35,19 @@ ul p, ol p {
     margin: 0;
 }
 
-img {
+img, video {
     width: 100%;
+}
+
+button {
+    width: 100%;
+    border: 1px solid gray;
+    padding: 1em;
+}
+
+#computer {
+    width: 100%;
+    border: none;
 }
 """
 
@@ -101,7 +112,60 @@ if (Math.random() < 0.02) {{
 Array.from(document.querySelectorAll("script")).forEach(x => x.parentElement.removeChild(x))
 const threat = {json.dumps(os.listdir("images/threat-updates"))}
 document.querySelector("#threat-update").src = "/threat-updates/" + randpick(threat)
+const demoButton = document.querySelector("#launch-demo")
+demoButton.addEventListener("click", () => {{
+    const node = document.createElement("iframe")
+    node.src = "/computer.html"
+    node.id = "computer"
+    demoButton.parentNode.parentNode.insertBefore(node, demoButton.parentNode.nextSibling)
+    demoButton.remove()
+    window.addEventListener("message", e => {{
+        document.querySelector("#computer").style.height = `${{e.data}}px`
+    }})
+}})
 """
+
+computer_html = """<!DOCTYPE html>
+<style>
+    #computer {
+        width: 100%;
+    }
+</style>
+<link rel="stylesheet" href="/copy-cat/main.css" />
+<div id="computer"></div>
+<script type="text/javascript" src="/copy-cat/require.js"></script>
+<script>
+const doScaler = () => {
+    const w = window.innerWidth
+    const ar = 1.7541899441340782
+    const canvas = document.querySelector("canvas")
+    canvas.style.width = `${w}px`
+    canvas.style.height = `${w/ar}px`
+    canvas.parentNode.style.width = `${w}px`
+    window.top.postMessage(document.querySelector("#computer").getBoundingClientRect().height, "*")
+}
+require.config({ paths: { copycat: "/copy-cat/" } });
+require(["copycat/embed"], setup => {
+    window.setup = setup
+    const computer = setup(document.getElementById("computer"), {
+        persistId: 0,
+        hdFont: false,
+        files: {
+            "startup.lua": `settings.set("potatOS.distribution_server", "https://osmarks.net/stuff/potatos/manifest")
+shell.run "wget run https://osmarks.net/stuff/potatos/autorun.lua"`,
+        },
+        label: "PotatOS",
+    }).then(x => {
+        console.log(x)
+        setInterval(doScaler, 100) // sorry
+    })
+});
+window.addEventListener("resize", doScaler)
+</script>
+"""
+
+with open("website/computer.html", "w") as f:
+    f.write(computer_html)
 
 with open("manifest", "r") as f:
     data = f.readlines()
@@ -138,3 +202,5 @@ with open("website/index.html", "w") as f:
     f.write(html)
 with open("website/privacy/index.html", "w") as f:
     f.write(privacy_policy())
+if os.path.exists("website/copy-cat"): shutil.rmtree("website/copy-cat")
+shutil.copytree("copy-cat", "website/copy-cat")
