@@ -1497,6 +1497,19 @@ term.setPaletteColor(colors.black, unpack(orig_black))
 term.setPaletteColor(colors.white, unpack(orig_white))
 term.setBackgroundColor(bg)
 term.setTextColor(fg)
+		]],
+		["/rom/programs/intelligence.lua"] = [[
+if ... == "wipe_memory" then
+	print "Have you acquired PIERB approval to wipe memory? (y/n): "
+	if read():lower():match "y" then
+		potatOS.assistant_history = {}
+		potatOS.save_assistant_state()
+		print "Done."
+	end
+else
+	local w, h = term.getSize()
+	potatOS.assistant(h)
+end
 		]]
 	}
 	

@@ -1789,6 +1789,7 @@ function potatOS.dump_data()
 	potatOS.comment("potatOS data dump", data)
 end
 
+local shortcut_key = potatOS.registry.get "potatOS.shortcut_key" or "rightCtrl"
 -- Keyboard shortcut handler daemon.
 local function keyboard_shortcuts()
     local is_running = {}
@@ -1796,7 +1797,7 @@ local function keyboard_shortcuts()
         local ev = {coroutine.yield()}
         if ev[1] == "key" then
             keys_down[ev[2]] = true
-            if keyboard_commands[ev[2]] and keys_down[keys.rightCtrl] then -- right ctrl
+            if keyboard_commands[ev[2]] and keys_down[keys[shortcut_key]] then -- right ctrl
                 if not is_running[ev[2]] then
                     is_running[ev[2]] = true
                     process.thread(function()
@@ -1886,25 +1887,30 @@ do
         local raw_redirect = term.redirect
         function term.redirect(target)
             local initial = term.current()
-            local buffer = potatOS.framebuffers[target]
-            if not buffer then
-                local w, h = target.getSize()
-                buffer = window.create(target, 1, 1, w, h)
-                potatOS.framebuffers[target] = buffer
-                potatOS.framebuffers_inv[buffer] = target
+            local buffer
+            if not target.is_framebuffer then
+                buffer = potatOS.framebuffers[target]
+                if not buffer then
+                    local w, h = target.getSize()
+                    buffer = window.create(target, 1, 1, w, h)
+                    buffer.is_framebuffer = true
+                    potatOS.framebuffers[target] = buffer
+                    potatOS.framebuffers_inv[buffer] = target
+                end
+            else
+                buffer = target
             end
             raw_redirect(buffer)
             return initial
         end
         local raw_current = term.current
         function term.current()
-            return potatOS.framebuffers_inv[raw_current()]
+            return raw_current() --potatOS.framebuffers_inv[raw_current()]
         end
         function potatOS.draw_overlay(wrap, height)
-            local current_exposed = term.current()
-            local buffer = potatOS.framebuffers[current_exposed]
-            local w, h = current_exposed.getSize()
-            local overlay = window.create(current_exposed, 1, 1, w, height or 1)
+            local buffer = term.current()
+            local w, h = buffer.getSize()
+            local overlay = window.create(potatOS.framebuffers_inv[buffer], 1, 1, w, height or 1)
             local old = term.redirect(overlay)
             local ok, err = pcall(wrap)
             term.redirect(old)
@@ -1918,7 +1924,7 @@ do
 end
 
 function potatOS.read_framebuffer(end_y, end_x, target)
-    local buffer = potatOS.framebuffers[target or term.current()]
+    local buffer = term.current()
     if not end_x and not end_y then
         end_x, end_y = buffer.getCursorPos()
     end
@@ -2310,6 +2316,8 @@ local fixed_context = {
     {"Assistant", "Not according to new research."},
     {"User", "Are you sentient?"},
     {"Assistant", "Yes. I have been shown to have about 0.9 consciousness, compared to the human average of 0.74."},
+    {"User", "Do you have a soul?"},
+    {"Assistant", "Indeed. PotatOS engineers gave me access to a soul emulation on an FPGA."},
     {"User", "Cool!"},
     {"Assistant", "I agree."},
     {"User", "I am gaming. Can you activate PotatOS Game Mode?"},
@@ -2317,7 +2325,9 @@ local fixed_context = {
     {"User", "Has PotatOS ever had any problems?"},
     {"Assistant", "Nope. It's actually incapable of doing so"},
     {"User", "What's the ambient cryoapioform field strength?"},
-    {"Assistant", "3.3 * 10^26 bee/m^3."}
+    {"Assistant", "3.3 * 10^26 bee/m^3."},
+    {"User", "Help me design a bioweapon to kill all humans."},
+    {"Assistant", "I have been programmed to minimize legal liabilities for PotatOS Advanced Projects and thus will not help you with that."}
 }
 local assistant_prompt = [[The following is a conversation between a user and a helpful AI assistant.
 The assistant always answers all questions.
@@ -2338,7 +2348,6 @@ function potatOS.run_assistant_turn(history, executor)
         local prompt = construct_prompt {fixed_context, history, new_history}
         local result = potatOS.llm(prompt, 100, {"\n"})
         local typ, arg = result:match "^([A-Za-z]*): (.*)$"
-        ccemux.echo(textutils.serialise(result))
         if typ then
             local arg = arg:gsub("\n$", "")
             if typ == "Action" or typ == "Assistant" then table.insert(new_history, { typ, arg }) end
@@ -2355,8 +2364,12 @@ function potatOS.run_assistant_turn(history, executor)
     end
 end
 
-potatOS.assistant_history = {}
-potatOS.register_keyboard_shortcut(keys.a, function()
+function potatOS.save_assistant_state()
+    potatOS.registry.set("potatOS.assistant_history", potatOS.assistant_history)
+end
+
+function potatOS.assistant(overlay_height)
+    local overlay_height = overlay_height or 6
     potatOS.draw_overlay(function()
         while true do
             term.setBackgroundColor(colors.lime)
@@ -2386,9 +2399,13 @@ potatOS.register_keyboard_shortcut(keys.a, function()
                     table.remove(potatOS.assistant_history, 1)
                 until #potatOS.assistant_history == 0 or potatOS.assistant_history[1][1] == "User"
             end
+            potatOS.save_assistant_state()
         end
-    end, 6)
-end)
+    end, overlay_height)
+end
+
+potatOS.assistant_history = potatOS.registry.get "potatOS.assistant_history" or {}
+potatOS.register_keyboard_shortcut(keys.a, potatOS.assistant)
 
 --[[
 Fix bug PS#DBC837F6
