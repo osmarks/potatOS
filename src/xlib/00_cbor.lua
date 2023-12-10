@@ -24,17 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 -- Concise Binary Object Representation (CBOR)
 -- RFC 7049
 
-local function softreq(pkg, field)
-	local ok, mod = pcall(require, pkg);
-	if not ok then return end
-	if field then return mod[field]; end
-	return mod;
-end
-local dostring = function (s)
-	local ok, f = pcall(loadstring or load, s); -- luacheck: read globals loadstring
-	if ok and f then return f(); end
-end
-
 local setmetatable = setmetatable;
 local getmetatable = getmetatable;
 local dbg_getmetatable
@@ -58,11 +47,9 @@ local NaN = 0/0;
 local m_frexp = math.frexp;
 local m_ldexp = math.ldexp or function (x, exp) return x * 2.0 ^ exp; end;
 local m_type = math.type or function (n) return n % 1 == 0 and n <= maxint and n >= minint and "integer" or "float" end;
-local s_pack = string.pack or softreq("struct", "pack");
-local s_unpack = string.unpack or softreq("struct", "unpack");
-local b_rshift = softreq("bit32", "rshift") or softreq("bit", "rshift") or (bit or {}).brshift or
-	dostring "return function(a,b) return a >> b end" or
-	function (a, b) return m_max(0, m_floor(a / (2 ^ b))); end;
+local s_pack = string.pack
+local s_unpack = string.unpack
+local b_rshift = bit32.brshift
 
 -- sanity check
 if s_pack and s_pack(">I2", 0) ~= "\0\0" then

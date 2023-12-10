@@ -2,7 +2,7 @@
 local function copy(tabl)
 	local new = {}
 	for k, v in pairs(tabl) do
-		if type(v) == "table" and tabl ~= v then
+		if type(v) == "table" and tabl ~= v and v.COPY_EXACT == nil then
 			new[k] = copy(v)
 		else
 			new[k] = v
@@ -181,6 +181,7 @@ local this_level_env = _G
 
 -- Create a modified FS table which confines you to root and has some extra read-only pseudofiles.
 local function create_FS(root, overlay)
+	local fs = fs
 	local mappings = make_mappings(root)
 
 	local vfstree = {
@@ -216,7 +217,7 @@ local function create_FS(root, overlay)
 		end
 	end
 
-	local new = copy_some_keys {"getDir", "getName", "combine"} (fs)
+	local new = copy_some_keys {"getDir", "getName", "combine", "complete"} (fs)
 
 	function new.isReadOnly(path)
 		return path_in_overlay(new_overlay, path) or starts_with(canonicalize(path), "rom")
@@ -341,7 +342,7 @@ local allowed_APIs = {
 	"http",
 	"pairs",
 	"ipairs",
-	-- getfenv, getfenv are modified to prevent sandbox escapes and defined in make_environment
+	-- getfenv, setfenv are modified to prevent sandbox escapes and defined in make_environment
 	"peripheral",
 	"table",
 	"string",
@@ -376,6 +377,26 @@ local allowed_APIs = {
 	"~expect",
 	"__inext",
 	"periphemu",
+	"fs",
+	"debug",
+	"write",
+	"print",
+	"printError",
+	"read",
+	"colors",
+	"io",
+	"parallel",
+	"settings",
+	"vector",
+	"colours",
+	"keys",
+	"disk",
+	"help",
+	"paintutils",
+	"rednet",
+	"textutils",
+	"commands",
+	"window"
 }
 
 local gf, sf = getfenv, setfenv
@@ -383,16 +404,14 @@ local gf, sf = getfenv, setfenv
 -- Takes the root directory to allow access to, 
 -- a map of paths to either strings containing their contents or functions returning them
 -- and a table of extra APIs and partial overrides for existing APIs
-local function make_environment(root_directory, overlay, API_overrides)
+local function make_environment(API_overrides, current_process)
+	local env_host = string.format("YAFSS on %s", _HOST)
 	local environment = copy_some_keys(allowed_APIs)(_G)
-
-	environment.fs = create_FS(root_directory, overlay)
-
 	-- if function is not from within the VM, return env from within sandbox
 	function environment.getfenv(arg)
 		local env
 		if type(arg) == "number" then return gf() end
-		if not env or type(env._HOST) ~= "string" or not string.match(env._HOST, "YAFSS") then
+		if not env or type(env._HOST) ~= "string" or not env._HOST == env_host then
 			return gf()
 		else
 			return env
@@ -405,37 +424,28 @@ Allowing `setfenv` to operate on any function meant that privileged code could i
 	]]
 	function environment.setfenv(fn, env)
 		local nenv = gf(fn)
-		if not nenv or type(nenv._HOST) ~= "string" or not string.match(nenv._HOST, "YAFSS") then
+		if not nenv or type(nenv._HOST) ~= "string" or not nenv._HOST == env_host then
 			return false
 		end
 		return sf(fn, env)
 	end
 
+	local load = load
 	function environment.load(code, file, mode, env)
-		return load(code, file or "@<input>", mode or "t", env or environment)
-	end
-
-	if debug then
-		environment.debug = copy_some_keys {
-			"getmetatable",
-			"setmetatable",
-			"traceback",
-			"getinfo",
-			"getregistry"
-		}(debug)
+		return load(code, file, mode, env or environment)
 	end
 
 	environment._G = environment
 	environment._ENV = environment
-	environment._HOST = string.format("YAFSS on %s", _HOST)
+	environment._HOST = env_host
 
 	function environment.os.shutdown()
-		os.queueEvent("power_state", "shutdown")
+		process.IPC(current_process, "power_state", "shutdown")
 		while true do coroutine.yield() end
 	end
 
 	function environment.os.reboot()
-		os.queueEvent("power_state", "reboot")
+		process.IPC(current_process, "power_state", "reboot")
 		while true do coroutine.yield() end
 	end
 
@@ -444,39 +454,35 @@ Allowing `setfenv` to operate on any function meant that privileged code could i
 	return environment
 end
 
-local function run(root_directory, overlay, API_overrides, init)
-	if type(init) == "table" and init.URL then init = fetch(init.URL) end
-	init = init or fetch "https://pastebin.com/raw/wKdMTPwQ"
-	
+local function run(API_overrides, init, logger)
+	local current_process = process.running.ID
 	local running = true
 	while running do
 		parallel.waitForAny(function()
-			local env = make_environment(root_directory, overlay, API_overrides)
+			local env = make_environment(API_overrides, current_process)
 			env.init_code = init
 
 			local out, err = load(init, "@[init]", "t", env)
 			if not out then error(err) end
-			local ok, err = pcall(out) 
-			if not ok then printError(err) end
+			local ok, err = pcall(out)
+			if not ok then logger("sandbox errored: %s", err) end
 		end,
 		function()
 			while true do
-				local event, state = coroutine.yield "power_state"
-				if event == "power_state" then -- coroutine.yield behaves weirdly with terminate
-					if process then
-					    local this_process = process.running.ID
-						for _, p in pairs(process.list()) do
-							if p.parent and p.parent.ID == this_process then
-								process.signal(p.ID, process.signals.KILL)
-							end
+				local event, source, ty, spec = coroutine.yield "ipc"
+				if event == "ipc" and ty == "power_state" then -- coroutine.yield behaves weirdly with terminate
+					for _, p in pairs(process.list()) do
+						if process.is_ancestor(p, current_process) and p.ID ~= current_process and not p.thread then
+							process.signal(p.ID, process.signals.KILL)
 						end
 					end
-					if state == "shutdown" then running = false return
-					elseif state == "reboot" then return end
+					if spec == "shutdown" then running = false return
+					elseif spec == "reboot" then return end
 				end
 			end
 		end)
+		sleep()
 	end
 end
 
-return run
+return { run = run, create_FS = create_FS }

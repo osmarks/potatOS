@@ -1,0 +1,1 @@
+if potatOS.tau then textutils.pagedPrint(potatOS.tau) else error "PotatOS tau missing - is PotatOS correctly installed?" end

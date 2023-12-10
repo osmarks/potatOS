@@ -1,0 +1,1 @@
+print(string.reverse(potatOS.chuck_norris()))

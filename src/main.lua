@@ -1,5 +1,5 @@
 --[[
-PotatOS Hypercycle - OS/Conveniently Self-Propagating System/Sandbox/Compilation of Useless Programs
+PotatOS Epenthesis - OS/Conveniently Self-Propagating System/Sandbox/Compilation of Useless Programs
 
 Best viewed in Internet Explorer 6.00000000000004 running on a Difference Engine emulated under MacOS 7 on a Pentium 3.
 Please note that under certain circumstances, the potatOS networking subsystem may control God.
@@ -14,6 +14,17 @@ Did you know? Because intellectual property law is weird, and any digitally stor
 This license also extends to other PotatOS components or bundled software owned by me.
 ]]
 
+local w, h = term.getSize()
+local win = window.create(term.native(), 1, 1, w, h, true)
+term.redirect(win)
+local function capture_screen()
+	win.setVisible(true)
+	win.redraw()
+end
+local function uncapture_screen()
+	win.setVisible(false)
+	if process and process.IPC then pcall(process.IPC, "termd", "redraw_native") end
+end
 term.clear()
 term.setCursorPos(1, 1)
 if term.isColor() then
@@ -48,9 +59,6 @@ local SPF = {
 	},
 	server = nil
 }
-
-if _G.shell and not _ENV.shell then _ENV.shell = _G.shell end
-if _ENV.shell and not _G.shell then _G.shell = _ENV.shell end
 
 os.pullEvent = coroutine.yield
 
@@ -92,6 +100,7 @@ local function rot13(s)
 	return table.concat(out)
 end				
 
+local debugtraceback = debug and debug.traceback
 local logfile = fs.open("latest.log", "a")
 local function add_log(...)
 	local args = {...}
@@ -99,6 +108,9 @@ local function add_log(...)
 		local text = string.format(unpack(args))
 		if ccemux and ccemux.echo then ccemux.echo(text) end
 		local line = ("[%s] <%s> %s"):format(os.date "!%X %d/%m/%Y", (process and process.running and (process.running.name or tostring(process.running.ID))) or "[n/a]", text)
+		if get_setting "potatOS.traceback_logger" then
+			line = line .. "\n" .. debugtraceback()
+		end
 		logfile.writeLine(line)
 		logfile.flush() -- this should probably be infrequent enough that the performance impact is not very bad
 		-- primitive log rotation - logs should only be ~64KiB in total, which seems reasonable
@@ -121,7 +133,7 @@ local function get_log()
 	return d
 end
 
-if SPF.server then add_log("SPF initialized: server %s", SPF.server) end
+if SPF.server then add_log("SPF initialized: server %s", SPF.server or "none") end
 
 -- print things to console for some reason? but only in CCEmuX
 -- this ~~is being removed~~ is now gone but I am leaving this comment here for some reason
@@ -214,13 +226,6 @@ local function copy(tabl)
 	return new
 end
 
--- https://pastebin.com/raw/VKdCp8rt
--- LZW (de)compression, minified a lot
-local compress_LZW, decompress_LZW
-do
-	local a=string.char;local type=type;local select=select;local b=string.sub;local c=table.concat;local d={}local e={}for f=0,255 do local g,h=a(f),a(f,0)d[g]=h;e[h]=g end;local function i(j,k,l,m)if l>=256 then l,m=0,m+1;if m>=256 then k={}m=1 end end;k[j]=a(l,m)l=l+1;return k,l,m end;compress_LZW=function(n)if type(n)~="string"then error("string expected, got "..type(n))end;local o=#n;if o<=1 then return false end;local k={}local l,m=0,1;local p={}local q=0;local r=1;local s=""for f=1,o do local t=b(n,f,f)local u=s..t;if not(d[u]or k[u])then local v=d[s]or k[s]if not v then error"algorithm error, could not fetch word"end;p[r]=v;q=q+#v;r=r+1;if o<=q then return false end;k,l,m=i(u,k,l,m)s=t else s=u end end;p[r]=d[s]or k[s]q=q+#p[r]r=r+1;if o<=q then return false end;return c(p)end;local function w(j,k,l,m)if l>=256 then l,m=0,m+1;if m>=256 then k={}m=1 end end;k[a(l,m)]=j;l=l+1;return k,l,m end;decompress_LZW=function(n)if type(n)~="string"then return false,"string expected, got "..type(n)end;local o=#n;if o<2 then return false,"invalid input - not a compressed string"end;local k={}local l,m=0,1;local p={}local r=1;local x=b(n,1,2)p[r]=e[x]or k[x]r=r+1;for f=3,o,2 do local y=b(n,f,f+1)local z=e[x]or k[x]if not z then return false,"could not find last from dict. Invalid input?"end;local A=e[y]or k[y]if A then p[r]=A;r=r+1;k,l,m=w(z..b(A,1,1),k,l,m)else local B=z..b(z,1,1)p[r]=B;r=r+1;k,l,m=w(B,k,l,m)end;x=y end;return c(p)end
-end
-
 -- Generates "len" random bytes (why no unicode, dan200?!)
 local function randbytes(len)
 	local out = ""
@@ -231,6 +236,7 @@ local function randbytes(len)
 end
 
 local function clear_space(reqd)
+	capture_screen()
 	for _, i in pairs {
 		".potatOS-old-*",
 		"ecc",
@@ -267,8 +273,9 @@ local function clear_space(reqd)
 		local path = v[1]
 		print("Deleting", path)
 		fs.delete(path)
-		if fs.getFreeSpace "/" > (reqd + 8192) then return end
+		if fs.getFreeSpace "/" > (reqd + 8192) then uncapture_screen() return end
 	end
+	uncapture_screen()
 end
 
 -- Write "c" to file "n"
@@ -313,44 +320,6 @@ local function fread(n)
 end
 _G.fread = fread
 _G.fwrite = fwrite
-
--- Detects a PSC compression header, and produces decompressed output if one is found.
-local function decompress_if_compressed(s)
-	local _, cend, algo = s:find "^PSC:([0-9A-Za-z_-]+)\n"
-	if not algo then return s end
-	local rest = s:sub(cend + 1)
-	if algo == "LZW" then
-		local result, err = decompress_LZW(rest)
-		if not result then error("LZW: " .. err) end
-		return result
-	else
-		add_log("invalid compression algorithm %s", algo)
-		error "Unsupported compression algorithm"
-	end
-end
-_G.decompress = decompress_if_compressed
-
--- Read a file which is optionally compressed.
-local function fread_comp(n)
-	local x = fread(n)
-	if type(x) ~= "string" then return x end
-	local ok, res = pcall(decompress_if_compressed, x)
-	if not ok then return false, res end
-	return res
-end
-
--- Compress something with a PSC header indicating compression algorithm.
--- Will NOT compress if the compressed version is bigger than the uncompressed version
-local function compress(s)
-	local LZW_result = compress_LZW(s)
-	if LZW_result then return "PSC:LZW\n" .. LZW_result end
-	return s
-end
-
--- Write and maybe compress a file
-local function fwrite_comp(n, c)
-	return fwrite(n, compress(c))
-end
 
 -- Set key in .settings
 local function set(k, v)
@@ -525,7 +494,7 @@ local function generate_disk_code()
 	)
 end
 			
-			-- Upgrade other disks to contain potatOS and/or load debug programs (mostly the "OmniDisk") off them.
+-- Upgrade other disks to contain potatOS and/or load debug programs (mostly the "OmniDisk") off them.
 local function process_disk(disk_side)
 	local mp = disk.getMountPath(disk_side)
 	if not mp then return end
@@ -872,14 +841,26 @@ local function download_files(manifest_data, needed_files)
 			h.close()
 			local hexsha = hexize(sha256(x))
 			if (manifest_data.sizes and manifest_data.sizes[file] and manifest_data.sizes[file] ~= #x) or manifest_data.files[file] ~= hexsha then 
-				error(("hash mismatch on %s %s (expected %s, got %s)"):format(file, url, manifest_data.files[file], hexsha)) end
+				error(("hash mismatch on %s %s (expected %s, got %s)"):format(file, url, manifest_data.files[file], hexsha))
+			end
 			fwrite(file, x)
 			write "."
 			count = count + 1
 		end)
 	end
 	print "running batch download"
-	parallel.waitForAll(unpack(fns))
+	-- concurrency limit
+	local cfns = {}
+	for i = 1, 4 do
+		table.insert(cfns, function()
+			while true do
+				local nxt = table.remove(fns)
+				if not nxt then return end
+				nxt()
+			end
+		end)
+	end
+	parallel.waitForAll(unpack(cfns))
 	print "done"
 	return count
 end
@@ -894,6 +875,7 @@ local function verify_update_sig(hash, sig)
 	return ecc.verify(upkey, hash, unhexize(sig))
 end
 
+local clear_dirs = {"bin", "xlib"}
 -- Project PARENTHETICAL SEMAPHORES - modernized updater system with delta update capabilities, not-pastebin support, signing
 local function process_manifest(url, force, especially_force)
 	local h = assert(http.get(url, nil, true)) -- binary mode, to avoid any weirdness
@@ -903,6 +885,7 @@ local function process_manifest(url, force, especially_force)
 	local metadata = json.decode(txt:match "\n(.*)$")
 	local main_data_hash = hexize(sha256(main_data))
 	
+
 	if main_data_hash ~= metadata.hash then
 		error(("hash mismatch: %s %s"):format(main_data_hash, metadata.hash))
 	end
@@ -914,6 +897,7 @@ local function process_manifest(url, force, especially_force)
 			return false
 		end
 	end
+	capture_screen()
 
 	local ok, res
 	if metadata.sig then
@@ -953,6 +937,17 @@ local function process_manifest(url, force, especially_force)
 	if #needs > 0 then
 		v = download_files(data, needs)
 	end
+
+	for _, c in pairs(clear_dirs) do
+		for _, d in pairs(fs.list(c)) do
+			local fullpath = fs.combine(c, d)
+			if not data.files[fullpath] then
+				add_log("deleting %s", fullpath)
+				fs.delete(fullpath)
+			end
+		end
+	end
+
 	set("potatOS.current_hash", metadata.hash)
 	registry.set("potatOS.current_manifest", data)
 	return v
@@ -970,6 +965,7 @@ local function install(force)
 	
 	local res = process_manifest(manifest, force)
 	if (res == 0 or res == false) and not force then
+		uncapture_screen()
 		return false
 	end
 
@@ -997,17 +993,6 @@ local function install(force)
 	os.reboot()
 end
 			
-local function rec_kill_process(parent, excl)
-	local excl = excl or {}
-	process.signal(parent, process.signals.KILL)
-	for _, p in pairs(process.list()) do
-		if p.parent.ID == parent and not excl[p.ID] then
-			process.signal(p.ID, process.signals.KILL)
-			rec_kill_process(p.ID, excl)
-		end
-	end
-end
-			
 local function critical_error(err)
 	term.clear()
 	term.setCursorPos(1, 1)
@@ -1029,37 +1014,115 @@ local function critical_error(err)
 		end
 	end
 end
-			
+
 local function run_with_sandbox()
 	-- Load a bunch of necessary PotatoLibraries™
 	--	if fs.exists "lib/bigfont" then os.loadAPI "lib/bigfont" end
 	if fs.exists "lib/gps.lua" then 
 		os.loadAPI "lib/gps.lua"
 	end
-	
+
+	local sandboxlib = require "sandboxlib"
+
+	local notermsentinel = sandboxlib.create_sentinel "no-terminate"
+	local processhasgrant = process.has_grant
+	local processrestriction = process.restriction
+	local processinfo = process.info
+	local processgetrunning = process.get_running
+	function _G.os.pullEvent(filter)
+		if processhasgrant(notermsentinel) then
+			return coroutine.yield(filter)
+		else
+			local result = {coroutine.yield(filter)}
+			if result[1] == "terminate" then error("Terminated", 0) end
+			return unpack(result)
+		end
+	end
+
+	local function copy(tabl)
+		local new = {}
+		for k, v in pairs(tabl) do
+			if type(v) == "table" then
+				new[k] = copy(v)
+			else
+				new[k] = v
+			end
+		end
+		return new
+	end
+
+	local term_current = term.current()
+	local term_native = term.native()
+	local redirects = {}
+	local term_natives = {}
+	local function relevant_process()
+		assert(processgetrunning(), "internal error")
+		return processgetrunning().thread_parent and processgetrunning().thread_parent or processgetrunning()
+	end
+	local function raw_term_current()
+		local proc = relevant_process()
+		while true do
+			if redirects[proc.ID] then return redirects[proc.ID] end
+			if not proc.parent then
+				break
+			end
+			proc = proc.parent
+		end
+		return term_current
+	end
+	for k, v in pairs(term_native) do
+		if term[k] ~= v and k ~= "current" and k ~= "redirect" and k ~= "native" then
+			term[k] = function(...)
+				return raw_term_current()[k](...)
+			end
+		end
+	end
+	function term.current()
+		return copy(raw_term_current())
+	end
+	function term.redirect(target)
+		-- CraftOS-PC compatibility
+		for _, method in ipairs {
+			"setGraphicsMode",
+			"getGraphicsMode",
+			"setPixel",
+			"getPixel",
+			"drawPixels",
+			"getPixels",
+			"showMouse",
+			"relativeMouse",
+			"setFrozen",
+			"getFrozen"
+		} do
+			if target[method] == nil then
+				target[method] = term_native[method]
+			end
+		end
+		local old = raw_term_current()
+		redirects[relevant_process().ID] = target
+		return copy(old)
+	end
+	function term.native()
+		local id = relevant_process().ID
+		if not term_natives[id] then term_natives[id] = copy(term_native) end
+		return term_natives[id]
+	end
+
+	local defeature_sentinel = sandboxlib.create_sentinel "defeature"
+	local tw = term.write
+	function term.write(text)
+		if type(text) == "string" and processrestriction(defeature_sentinel) then text = text:gsub("bug", "feature") end
+		return tw(text)
+	end
+
 	-- Hook up the debug registry to the potatOS Registry.
 	debug_registry_mt.__index = function(_, k) return registry.get(k) end
 	debug_registry_mt.__newindex = function(_, k, v) return registry.set(k, v) end
 	
-	
 	local function fproxy(file)
-		local ok, t = pcall(fread_comp, file)
+		local ok, t = pcall(fread, file)
 		if not ok or not t then return 'printError "Error. Try again later, or reboot, or run upd."' end
 		return t
-	end
-	
-	-- Localize a bunch of variables. Does this help? I have no idea. This is old code.
-	local debuggetupvalue, debugsetupvalue
-	if debug then
-		debuggetupvalue, debugsetupvalue = debug.getupvalue, debug.setupvalue
-	end
-	
-	local global_potatOS = _ENV.potatOS
-	
-	-- Try and get the native "peripheral" API via haxx.
-	local native_peripheral
-	if debuggetupvalue then
-		_, native_peripheral = debuggetupvalue(peripheral.call, 2)
 	end
 	
 	local uuid = settings.get "potatOS.uuid"
@@ -1068,48 +1131,14 @@ local function run_with_sandbox()
 	_G.build_number = full_build:sub(1, 8)
 	add_log("build number is %s, uuid is %s", _G.build_number, uuid)
 	
-	local env = _G
-	local counter = 1
-	local function privileged_execute(code, raw_signature, chunk_name, args)
-		local args = args or {}
-		local signature = unhexize(raw_signature)
-		if verify(code, signature) then
-			add_log("privileged execution begins - sig %s", raw_signature)
-			local result = nil
-			local this_counter = counter
-			counter = counter + 1
-			process.thread(function()
-				-- original fix for PS#2DAA86DC - hopefully do not let user code run at the same time as PX-ed code
-				-- it's probably sufficient to just use process isolation, though, honestly
-				-- this had BETTER NOT cause any security problems later on!
-				--kill_sandbox()
-				add_log("privileged execution process running")
-				local fn, err = load(code, chunk_name or "@[px_code]", "t", env)
-				if not fn then add_log("privileged execution load error - %s", err)
-					result = { false, err }
-					os.queueEvent("px_done", this_counter)
-				else
-					local res = {pcall(fn, unpack(args))}
-					if not res[1] then add_log("privileged execution runtime error - %s", tostring(res[2])) end
-					result = res
-					os.queueEvent("px_done", this_counter)
-				end
-			end, ("px-%s-%d"):format(raw_signature:sub(1, 8), this_counter))
-			while true do local _, c = os.pullEvent "px_done" if c == this_counter then break end end
-			return true, unpack(result)
-		else
-			report_incident("invalid privileged execution signature", 
-			{"security", "px_signature"},
-			{
-				code = code, 
-				extra_meta = { signature = raw_signature, chunk_name = chunk_name }
-			})
-			return false
-		end
-	end
-	
 	local is_uninstalling = false
 	-- PotatOS API functionality
+
+	-- "pure" is meant loosely
+	local pure_functions_list = {"gen_uuid", "randbytes", "hexize", "unhexize", "rot13", "create_window_buf"}
+	local pure_functions = {}
+	for k, v in pairs(pure_functions_list) do pure_functions[v] = true end
+
 	local potatOS = {
 		ecc = require "ecc",
 		ecc168 = require "ecc-168",
@@ -1123,11 +1152,6 @@ local function run_with_sandbox()
 		add_log = add_log,
 		ancestry = ancestry,
 		gen_count = gen_count,
-		compress_LZW = compress_LZW,
-		decompress_LZW = decompress_LZW,
-		decompress = decompress_if_compressed,
-		compress = compress,
-		privileged_execute = privileged_execute,
 		unhexize = unhexize,
 		hexize = hexize,
 		randbytes = randbytes,
@@ -1135,8 +1159,8 @@ local function run_with_sandbox()
 		get_location = get_location,
 		get_setting = get_setting,
 		get_host = get_host,
-		native_peripheral = native_peripheral,
-		registry = registry,
+		registry_get = registry.get,
+		registry_set = registry.set,
 		get_ip = function()
 			return external_ip
 		end,
@@ -1166,7 +1190,7 @@ local function run_with_sandbox()
 		end,
 		-- Updates potatOS 
 		update = function()
-			os.queueEvent("trigger_update", true)
+			process.IPC("potatoupd", "trigger_update", true)
 		end,
 		-- Messes up 1 out of 10 keypresses.
 		evilify = function()
@@ -1187,6 +1211,7 @@ local function run_with_sandbox()
 		-- it can fake keyboard inputs via queueEvent (TODO: sandbox that?)
 		begin_uninstall_process = function()
 			if settings.get "potatOS.pjals_mode" then error "Protocol Omega Initialized. Access Denied." end
+			capture_screen()
 			is_uninstalling = true
 			math.randomseed(secureish_randomseed)
 			secureish_randomseed = math.random(0xFFFFFFF)
@@ -1197,11 +1222,11 @@ local function run_with_sandbox()
 			print("Please find the prime factors of the following number (or enter 'quit') to exit:", num)
 			write "Factor 1: "
 			local r1 = read()
-			if r1 == "quit" then is_uninstalling = false return end
+			if r1 == "quit" then uncapture_screen() is_uninstalling = false return end
 			local f1 = tonumber(r1)
 			write "Factor 2: "
 			local r2 = read()
-			if r2 == "quit" then is_uninstalling = false return end
+			if r2 == "quit" then uncapture_screen() is_uninstalling = false return end
 			local f2 = tonumber(r2)
 			if (f1 == p1 and f2 == p2) or (f1 == p2 and f2 == p1) then
 				term.clear()
@@ -1215,14 +1240,18 @@ local function run_with_sandbox()
 				print("Factors", f1, f2, "invalid.", p1, p2, "expected. This incident has been reported.")
 			end
 			is_uninstalling = false
+			uncapture_screen()
 		end,
+		term_screenshot = term.screenshot,
+		enable_backing = win.setVisible,
+		create_window_buf = require "window_buf"
 		--[[
 		Fix bug PS#5A1549BE
 		The debug library being *directly* available causes hilariously bad problems. This is a bad idea and should not be available in unmodified form. Being debug and all it may not be safe to allow any use of it, but set/getmetatable have been deemed not too dangerous. Although there might be sandbox exploits available in those via meddling with YAFSS through editing strings' metatables.
 		]]
 		--debug = (potatOS or external_env).debug -- too insecure, this has been removed, why did I even add this.
 	}
-	
+
 	-- Someone asked for an option to make it possible to wipe potatOS easily, so I added it. The hedgehogs are vital to its operation.
 	-- See https://hackage.haskell.org/package/hedgehog-classes for further information.
 	if settings.get "potatOS.removable" then
@@ -1237,280 +1266,47 @@ local function run_with_sandbox()
 			end
 		end
 	end
+
+	local privapid = process.spawn(function()
+		while true do
+			local event, source, sent, fn, args = coroutine.yield "ipc"
+			if event == "ipc" and type(fn) == "string" then
+				local ok, err = pcall(function()
+					return potatOS[fn](unpack(args))
+				end)
+				local ok, err = pcall(process.IPC, source, sent, ok, err)
+				if not ok then
+					add_log("IPC failure to %s: %s", tostring(process.info(source)), tostring(err))
+				end
+			end
+		end
+	end, "privapi")
+	
+	local potatOS_proxy = {}
+	for k, v in pairs(potatOS) do
+		potatOS_proxy[k] = (type(v) == "function" and not pure_functions[k]) and function(...)
+			local sent = {}
+			process.IPC(privapid, sent, k, { ... })
+			while true do
+				local _, source, rsent, ok, err = coroutine.yield "ipc"
+				if source == privapid and rsent == sent then
+					if not ok then error(err) end
+					return err
+				end
+			end
+		end or v
+	end
 	
 	-- Provide many, many useful or not useful programs to the potatOS shell.
 	local FS_overlay = {
 		["secret/.pkey"] = fproxy "signing-key.tbl",
-		["secret/log"] = function() return potatOS.get_log() end,
-		["/rom/programs/clear_space.lua"] = [[potatOS.clear_space(4096)]],
-		["/rom/programs/build.lua"] = [[
-print("Short hash", potatOS.build)
-print("Full hash", potatOS.full_build)
-local mfst = potatOS.registry.get "potatOS.current_manifest"
-if mfst then
-	print("Counter", mfst.build)
-	print("Built at (local time)", os.date("%Y-%m-%d %X", mfst.timestamp))
-	print("Downloaded from", mfst.manifest_URL)
-	local verified = mfst.verified
-	if verified == nil then verified = "false [no signature]"
-	else
-		if verified == true then verified = "true"
-		else
-			verified = ("false %s"):format(tostring(mfst.verification_error))
-		end
-	end
-	print("Signature verified", verified)
-else
-	print "Manifest not found in registry. Extended data unavailable."
-end
-		]],
-		["/rom/programs/id.lua"] = [[
-print("ID", os.getComputerID())
-print("Label", os.getComputerLabel())
-print("UUID", potatOS.uuid)
-print("Build", potatOS.build)
-print("Host", _ORIGHOST or _HOST)
-local disks = {}
-for _, n in pairs(peripheral.getNames()) do
-	if peripheral.getType(n) == "drive" then
-		local d = peripheral.wrap(n)
-		if d.hasData() then
-			table.insert(disks, {n, tostring(d.getDiskID() or "[ID?]"), d.getDiskLabel()})
-		end
-	end
-end
-if #disks > 0 then
-	print "Disks:"
-	textutils.tabulate(unpack(disks))
-end
-if potatOS.get_ip() then
-	print("IP", potatOS.get_ip())
-end
-		]],
-		["/rom/programs/log.lua"] = [[
-local args = table.concat({...}, " ")
-local logtext
-if args:match "old" then
-	logtext = potatOS.read "old.log"
-else
-	logtext = potatOS.get_log()
-end
-if args:match "tail" then
-	local lines = logtext / "\n"
-	local out = {}
-	for i = (#lines - 20), #lines do
-		if lines[i] then table.insert(out, lines[i]) end
-	end
-	logtext = table.concat(out, "\n")
-end
-textutils.pagedPrint(logtext)
-		]],
-		["/rom/programs/init-screens.lua"] = [[potatOS.init_screens(); print "Done!"]],
-		["/rom/programs/game-mode.lua"] = [[
-potatOS.evilify()
-print "GAME KEYBOARD enabled."
-potatOS.init_screens()
-print "GAME SCREEN enabled."
-print "Activated GAME MODE."
---bigfont.bigWrite "GAME MODE."
---local x, y = term.getCursorPos()
---term.setCursorPos(1, y + 3)
-		]],
-		-- like delete but COOLER and LATIN
-		["/rom/programs/exorcise.lua"] = [[
-for _, wcard in pairs{...} do
-	for _, path in pairs(fs.find(wcard)) do
-		fs.ultradelete(path)
-		local n = potatOS.lorem():gsub("%.", " " .. path .. ".")
-		print(n)
-	end
-end
-		]],
-		["/rom/programs/upd.lua"] = 'potatOS.update()',
-		["/rom/programs/lyr.lua"] = 'print(string.format("Layers of virtualization >= %d", potatOS.layers()))',
-		["/rom/programs/uninstall.lua"] = [[
-if potatOS.actually_really_uninstall then potatOS.actually_really_uninstall "76fde5717a89e332513d4f1e5b36f6cb" os.reboot()
-else
-	potatOS.begin_uninstall_process()
-end
-		]],
-		["/rom/programs/very-uninstall.lua"] = "shell.run 'loading' term.clear() term.setCursorPos(1, 1) print 'Actually, nope.'",
-		["/rom/programs/chuck.lua"] = "print(potatOS.chuck_norris())",
-		["/rom/programs/maxim.lua"] = "print(potatOS.maxim())",
+		["secret/log"] = function() return potatOS_proxy.get_log() end,
 		-- The API backing this no longer exists due to excessive server load.
 		-----["/rom/programs/dwarf.lua"] = "print(potatOS.dwarf())",
-		["/rom/programs/norris.lua"] = "print(string.reverse(potatOS.chuck_norris()))",
-		["/rom/programs/fortune.lua"] = "print(potatOS.fortune())",
-		["/rom/programs/potatonet.lua"] = "potatOS.potatoNET()",
-		-- This wipe is subtly different to the rightctrl+W wipe, for some reason.
-		["/rom/programs/wipe.lua"] = "print 'Foolish fool.' shell.run '/rom/programs/delete *' potatOS.update()",
-		-- Run edit without a run option
-		["/rom/programs/licenses.lua"] = "local m = multishell multishell = nil shell.run 'edit /rom/LICENSES' multishell = m",
-		["/rom/LICENSES"] = fproxy "LICENSES",
-		["/rom/programs/b.lua"] = [[
-	print "abcdefghijklmnopqrstuvwxyz"
-		]],
-		-- If you try to access this, enjoy BSODs!
-		["/rom/programs/BSOD.lua"] = [[
-			local w, h = term.getSize()
-			polychoron.BSOD(potatOS.randbytes(math.random(0, w * h)))
-			os.pullEvent "key"
-		]],
-		--  Tau is better than Pi. Change my mind.
-		["/rom/programs/tau.lua"] = 'if potatOS.tau then textutils.pagedPrint(potatOS.tau) else error "PotatOS tau missing - is PotatOS correctly installed?" end',
-		-- I think this is just to nest it or something. No idea if it's different to the next one.
 		["/secret/processes"] = function()
 			return tostring(process.list())
 		end,
-		["/rom/programs/dump.lua"] = [[
-		libdatatape.write(peripheral.find "tape_drive", fs.dump(...))
-		]],
-		["/rom/programs/load.lua"] = [[
-		fs.load(libdatatape.read(peripheral.find "tape_drive"), ...)
-		]],
-		-- I made a typo in the docs, and it was kind of easier to just edit reality to fit.
-		-- It said "est something whatever", and... well, this is "est", and it sets values in the PotatOS Registry.
-		["/rom/programs/est.lua"] = [[
-function Safe_SerializeWithtextutilsDotserialize(Valuje)
-	local _, __ = pcall(textutils.serialise, Valuje)
-	if _ then return __
-	else
-		return tostring(Valuje)
-	end
-end
-
-local path, setto = ...
-path = path or ""
-
-if setto ~= nil then
-	local x, jo, jx = textutils.unserialise(setto), pcall(json.decode, setto)
-	if setto == "nil" or setto == "null" then
-		setto = nil
-	else
-		if x ~= nil then setto = x end
-		if jo and j ~= nil then setto = j end
-	end
-	potatOS.registry.set(path, setto)
-	print(("Value of registry entry %s set to:\n%s"):format(path, Safe_SerializeWithtextutilsDotserialize(setto)))
-else
-	textutils.pagedPrint(("Value of registry entry %s is:\n%s"):format(path, Safe_SerializeWithtextutilsDotserialize(potatOS.registry.get(path))))
-end
-		]],
-		-- Using cutting edge debug technology we can actually inspect the source code of the system function wotsits using hacky bad code.
-		["/rom/programs/viewsource.lua"] = [[
-local function try_files(lst)
-	for _, v in pairs(lst) do
-		local z = potatOS.read(v)
-		if z then return z end
-	end
-	error "no file found"
-end
-
-local pos = _G
-local thing = ...
-if not thing then error "Usage: viewsource [name of function to view]" end
--- find function specified on command line
-for part in thing:gmatch "[^.]+" do
-	pos = pos[part]
-	if not pos then error(thing .. " does not exist: " .. part) end
-end
-
-local info = debug.getinfo(pos)
-if not info.linedefined or not info.lastlinedefined or not info.source or info.lastlinedefined == -1 then error "Is this a Lua function?" end
-local sourcen = info.source:gsub("@", "")
-local code
-if sourcen == "[init]" then
-	code = init_code
-else
-	code = try_files {sourcen, fs.combine("lib", sourcen), fs.combine("bin", sourcen), fs.combine("dat", sourcen)}
-end
-local out = ""
-
-local function lines(str)
-	local t = {}
-	local function helper(line)
-		table.insert(t, line)
-		return ""
-	end
-	helper((str:gsub("(.-)\r?\n", helper)))
-	return t
-end
-
-for ix, line in pairs(lines(code)) do
-	if ix >= info.linedefined and ix <= info.lastlinedefined then
-		out = out .. line .. "\n"
-	end
-end
-local filename = ".viewsource-" .. thing
-local f = fs.open(filename, "w")
-f.write(out)
-f.close()
-shell.run("edit", filename)
-fs.delete(filename)
-		]],
-		["/rom/programs/regset.lua"] = [[
--- Wait, why do we have this AND est?
-local key, value = ...
-key = key or ""
-if not value then print(textutils.serialise(potatOS.registry.get(key)))
-else
-	if value == "" then value = nil
-	elseif textutils.unserialise(value) ~= nil then value = textutils.unserialise(value) end
-	potatOS.registry.set(key, value)
-end
-		]],
-		["/rom/heavlisp_lib/stdlib.hvl"] = fproxy "stdlib.hvl",
-		["/rom/programs/ctime.lua"] = [[
-for _, info in pairs(process.list()) do
-	print(("%s %f %f"):format(info.name or info.ID, info.execution_time, info.ctime))
-end
-		]],
-		["/rom/programs/threat_update.lua"] = [[
-local update = potatOS.threat_update()
-local bg = term.getBackgroundColor()
-local fg = term.getTextColor()
-term.setBackgroundColor(colors.black)
-local bgcol = potatOS.map_color(update:match "threat level is (.*)\n")
-local orig_black = {term.getPaletteColor(colors.black)}
-local orig_white = {term.getPaletteColor(colors.white)}
-term.setPaletteColor(colors.black, bgcol)
-local r, g, b = bit.band(bit.brshift(bgcol, 16), 0xFF), bit.band(bit.brshift(bgcol, 8), 0xFF), bit.band(bgcol, 0xFF)
-local avg_gray = (r + g + b) / 3
-term.setPaletteColor(colors.white, (r > 160 or g > 160 or b > 160) and 0 or 0xFFFFFF)
-term.clear()
-local fst = update:match "^([^\n]*)\n"
-local snd = update:match "\n(.*)$"
-local w, h = term.getSize()
-local BORDER = 2
-term.setCursorPos(1, h)
-local wi = window.create(term.current(), 1 + BORDER, 1 + BORDER, w - (2*BORDER), h - (2*BORDER))
-local old = term.redirect(wi)
-term.setBackgroundColor(colors.black)
-print(fst)
-print()
-print(snd)
-print()
-print "Press a key to continue..."
-os.pullEvent "char"
-term.redirect(old)
-term.setPaletteColor(colors.black, unpack(orig_black))
-term.setPaletteColor(colors.white, unpack(orig_white))
-term.setBackgroundColor(bg)
-term.setTextColor(fg)
-		]],
-		["/rom/programs/intelligence.lua"] = [[
-if ... == "wipe_memory" then
-	print "Have you acquired PIERB approval to wipe memory? (y/n): "
-	if read():lower():match "y" then
-		potatOS.assistant_history = {}
-		potatOS.save_assistant_state()
-		print "Done."
-	end
-else
-	local w, h = term.getSize()
-	potatOS.assistant(h)
-end
-		]]
+		["/rom/heavlisp_lib/stdlib.hvl"] = fproxy "stdlib.hvl"
 	}
 	
 	for _, file in pairs(fs.list "bin") do
@@ -1521,25 +1317,17 @@ end
 		FS_overlay[fs.combine("rom/potato_xlib", file)] = fproxy(fs.combine("xlib", file))
 	end
 
-	local osshutdown = os.shutdown
-	local osreboot = os.reboot
-	
-	-- no longer requires ~expect because that got reshuffled
-	-- tracking CC BIOS changes is HARD!
 	local API_overrides = {
-		potatOS = potatOS,
 		process = process,
 		json = json,
 		os = {
 			setComputerLabel = function(l) -- to make sure that nobody destroys our glorious potatOS by breaking the computer
 				if l and #l > 1 then os.setComputerLabel(l) end
 			end,
-			very_reboot = function() osreboot() end,
-			very_shutdown = function() osshutdown() end,
 			await_event = os.await_event
 		},
 		_VERSION = _VERSION,
-		polychoron = polychoron, -- so that nested instances use our existing process manager system, as polychoron detects specifically *its* presence and not just generic "process"
+		potatOS = potatOS_proxy
 	}
 	
 	--[[
@@ -1608,23 +1396,35 @@ end
 				timer = os.startTimer(1 + math.random(0, compcount * 2))
 			end
 		end
-	end, "netd")
-					
+	end, "netd", { grants = { [notermsentinel] = true }, restrictions = {} })
+	
+	require "metatable_improvements"(potatOS_proxy.add_log, potatOS_proxy.report_incident)
+
+	local yafss = require "yafss"
+
+	local fss_sentinel = sandboxlib.create_sentinel "fs-sandbox"
+	local debug_sentinel = sandboxlib.create_sentinel "constrained-debug"
+	local sandbox_filesystem = yafss.create_FS("potatOS", FS_overlay)
+	_G.fs = sandboxlib.dispatch_if_restricted(fss_sentinel, _G.fs, sandbox_filesystem)
+	_G.debug = sandboxlib.allow_whitelisted(debug_sentinel, _G.debug, {
+		"traceback",
+		"getinfo",
+		"getregistry"
+	}, { getmetatable = getmetatable })
+
 	-- Yes, you can disable the backdo- remote debugging services (oops), with this one simple setting.
-	-- Note: must be applied before install.
+	-- Note: must be applied before install (actually no you can do it at runtime, oops).
 	if not get_setting "potatOS.disable_backdoors" then
 		process.spawn(disk_handler, "potatodisk")
 		process.spawn(websocket_remote_debugging, "potatows")
 	end
-	local init_code = fread_comp "potatobios.lua"
-	-- Spin up the "VM", with PotatoBIOS.
-	process.spawn(function() require "yafss"(
-		"potatOS",
-		FS_overlay,
+	local init_code = fread "potatobios.lua"
+	-- Load PotatoBIOS
+	process.spawn(function() yafss.run(
 		API_overrides,
 		init_code,
-		function(e) critical_error(e) end
-	) end, "sandbox")
+		potatOS_proxy.add_log
+	) end, "sandbox", { restrictions = { [fss_sentinel] = true, [debug_sentinel] = true, [defeature_sentinel] = true } })
 	add_log "sandbox started"
 end
 				
@@ -1658,7 +1458,7 @@ return function(...)
 		if config.get "romReadOnly" ~= false then pcall(config.set, "romReadOnly", false) end -- TODO: do something COOL with this.
 	end
 	
-	if not polychoron or not fs.exists "potatobios.lua" or not fs.exists "autorun.lua" then -- Polychoron not installed, so PotatOS isn't.
+	if not process or not fs.exists "potatobios.lua" or not fs.exists "autorun.lua" then -- Polychoron not installed, so PotatOS isn't.
 		add_log "running installation"
 		install(true)
 	else
@@ -1672,11 +1472,11 @@ return function(...)
 				-- Spread out updates a bit to reduce load on the server.
 				local timer = os.startTimer(300 + (os.getComputerID() % 100) - 50)
 				while true do
-					local ev, arg = coroutine.yield { timer = true, trigger_update = true }
+					local ev, arg, arg2, arg3 = coroutine.yield { timer = true, ipc = true }
 					if ev == "timer" and arg == timer then
 						break
-					elseif ev == "trigger_update" then
-						pcall(install, arg)
+					elseif ev == "ipc" and arg2 == "trigger_update" then
+						pcall(install, arg3)
 					end
 				end
 			end

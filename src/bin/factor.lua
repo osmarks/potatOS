@@ -12,9 +12,10 @@ repeat
     write "Provide an integer to factorize: "
     x = tonumber(read())
     if not x or math.floor(x) ~= x then print("That is NOT an integer.") end
+    if x and x < 2 then print("I forgot to mention this, but also don't use 1, 0 or negative integers.") end
 until x
 
-if x > (2^40) then print("WARNING: Number is quite big. Due to Lua floating point limitations, draconic entities MAY be present. If this runs for several seconds, it's probably frozen due to this.") end
+if x > (2^40) then print("WARNING: Number is quite big. Due to Lua floating point limitations, draconic entities MAY be present and results may be blatantly wrong. If this runs for several seconds, it's probably frozen due to this.") end
 
 local floor, abs, random, log, pow = math.floor, math.abs, math.random, math.log, math.pow
 
@@ -28,17 +29,16 @@ local function eps_compare(x, y)
     return abs(x - y) < 1e-14
 end
 
+-- binary modular exponentiation
 local function modexp(a, b, n)
     if b == 0 then return 1 % n end
     if b == 1 then return a % n end
     local bdiv2 = b / 2
     local fbdiv2 = floor(bdiv2)
     if eps_compare(bdiv2, fbdiv2) then
-        -- b is even, so it is possible to just modexp with HALF the exponent and square it (mod n)
         local x = modexp(a, fbdiv2, n)
         return (x * x) % n
     else
-        -- not even, so subtract 1 (this is even), modexp that, and multiply by a again (mod n)
         return (modexp(a, b - 1, n) * a) % n
     end
 end

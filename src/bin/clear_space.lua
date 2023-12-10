@@ -1,0 +1,1 @@
+potatOS.clear_space((... and tonumber(...) and tonumber(...) == tonumber(...)) and tonumber(...) or 4096)

@@ -139,42 +139,11 @@ local function digest(data)
 
 	data = preprocess(data)
 	local C = {upack(H)}
-	for i = 1, #data do C = digestblock(data[i], C) end
+	local dummy = ("%07x"):format(math.random(0, 0xFFFFFFF))
+	for i = 1, #data do C = digestblock(data[i], C) os.queueEvent(dummy) coroutine.yield(dummy) end
 	return toBytes(C, 8)
 end
 
-local function hmac(data, key)
-	local data = type(data) == "table" and {upack(data)} or to_bytes(tostring(data))
-	local key = type(key) == "table" and {upack(key)} or to_bytes(tostring(key))
-
-	local blocksize = 64
-
-	key = #key > blocksize and digest(key) or key
-
-	local ipad = {}
-	local opad = {}
-	local padded_key = {}
-
-	for i = 1, blocksize do
-		ipad[i] = bxor(0x36, key[i] or 0)
-		opad[i] = bxor(0x5C, key[i] or 0)
-	end
-
-	for i = 1, #data do
-		ipad[blocksize+i] = data[i]
-	end
-
-	ipad = digest(ipad)
-
-	for i = 1, blocksize do
-		padded_key[i] = opad[i]
-		padded_key[blocksize+i] = ipad[i]
-	end
-
-	return digest(padded_key)
-end
-
 return {
-	hmac = hmac,
 	digest = digest
 }

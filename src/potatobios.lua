@@ -1,3 +1,13 @@
+potatOS.registry = { set = potatOS.registry_set, get = potatOS.registry_get }
+local real_add_log = potatOS.add_log
+function potatOS.add_log(x, ...)
+    real_add_log("<" .. process.running.name .. "> " .. x, ...)
+end
+potatOS.enable_backing(false)
+
+process.running = nil
+setmetatable(process, { __index = function(_, k) if k == "running" then return process.get_running() end end })
+
 local report_incident = potatOS.report_incident
 potatOS.microsoft = potatOS.microsoft or false
 do
@@ -58,12 +68,14 @@ A highly obfuscated program called "wireworm" (https://pastebin.com/fjDsHf5E) wa
 
 UPDATE: Apparently YAFSS already includes code like this. Not sure what happened?
 ]]
+--[[
 local env_now = _G
 local real_getfenv = getfenv
 function _G.getfenv(x)
 	return env_now
 end
 do_something "getfenv"
+]]
 
 --[[
 "Fix" for bug PS#E9DCC81B
@@ -91,42 +103,6 @@ function _G.xpcall(fn, handler)
 end
 do_something "xpcall"
 ]]
-
-local secure_events = {
-	websocket_message = true,
-	http_success = true,
-	http_failure = true,
-	websocket_success = true,
-	websocket_failure = true,
-	px_done = true
-}
-
---[[
-Fix for bug PS#D7CD76C0
-As "sandboxed" code can still queue events, there was previously an issue where SPUDNET messages could be spoofed, causing arbitrary code to be executed in a privileged process.
-This... kind of fixes this? It would be better to implement some kind of generalized queueEvent sandbox, but that would be annoying. The implementation provided by Kan181/6_4 doesn't seem very sound.
-Disallow evil people from spoofing the osmarks.net website. Should sort of not really fix one of the sandbox exploits.
-
-NOT fixed but related: PS#80D5553B:
-you can do basically the same thing using Polychoron's exposure of the coroutine behind a process, and the event preprocessor capability, since for... some reason... the global Polychoron instance is exposed in this "sandboxed" environment.
-
-Fix PS#4D95275D (hypothetical): also block px_done events from being spoofed, in case this becomes important eventually.
-]]
-local real_queueEvent, real_type, real_stringmatch = os.queueEvent, type, string.match
-function _G.os.queueEvent(event, ...)
-	local args = {...}
-	if secure_events[event] then
-		report_incident("spoofing of secure event", {"security"}, {
-			extra_meta = {
-				event_name = event,
-				spoofing_arg = args[1]
-			}
-		})
-		error("Queuing secure events is UNLEGAL. This incident has been reported.", 0)
-	else
-		real_queueEvent(event, ...)
-	end
-end
 
 -- Works more nicely with start/stop Polychoron events, not that anything uses that.
 function sleep(time)
@@ -274,53 +250,6 @@ function loadstring(code, env)
 	return load(code, name, "t", e)
 end
 
--- Hacky fix for `expect` weirdness.
-
-local expect
-
-if fs.exists "rom/modules/main/cc/expect.lua" then
-	do
-    	local h = fs.open("rom/modules/main/cc/expect.lua", "r")
-	    local f, err = loadstring(h.readAll(), "@expect.lua")
-    	h.close()
-
-	    if not f then error(err) end
-    	expect = f().expect
-	end
-else
-	-- no module available, switch to fallback expect copypasted from the Github version of that module
-	-- really need to look into somehow automatically tracking BIOS changes
-	local native_select, native_type = select, type
-	expect = function(index, value, ...)
-	    local t = native_type(value)
-    	for i = 1, native_select("#", ...) do
-	        if t == native_select(i, ...) then return true end
-    	end
-	    local types = table.pack(...)
-    	for i = types.n, 1, -1 do
-        	if types[i] == "nil" then table.remove(types, i) end
-	    end
-    	local type_names
-	    if #types <= 1 then
-    	    type_names = tostring(...)
-	    else
-    	    type_names = table.concat(types, ", ", 1, #types - 1) .. " or " .. types[#types]
-	    end
-    	-- If we can determine the function name with a high level of confidence, try to include it.
-	    local name
-    	if native_type(debug) == "table" and native_type(debug.getinfo) == "function" then
-        	local ok, info = pcall(debug.getinfo, 3, "nS")
-	        if ok and info.name and #info.name ~= "" and info.what ~= "C" then name = info.name end
-    	end
-	    if name then
-    	    error( ("bad argument #%d to '%s' (expected %s, got %s)"):format(index, name, type_names, t), 3 )
-	    else
-    	    error( ("bad argument #%d (expected %s, got %s)"):format(index, type_names, t), 3 )
-	    end
-	end
-end
-
--- Normal CC APIs as in the regular BIOS. No backdoors here, I promise!
 
 function loadfile( filename, mode, env )
     -- Support the previous `loadfile(filename, env)` form instead.
@@ -328,9 +257,9 @@ function loadfile( filename, mode, env )
         mode, env = nil, mode
     end
 
-    expect(1, filename, "string")
-    expect(2, mode, "string", "nil")
-    expect(3, env, "table", "nil")
+    assert(type(filename) == "string")
+    assert(type(mode) == "string" or type(mode) == "nil")
+    assert(type(env) == "string" or type(mode) == "nil")
 
     local file = fs.open( filename, "r" )
     if not file then return nil, "File not found" end
@@ -352,376 +281,145 @@ dofile = function( _sFile )
     end
 end
 
-function write( sText )
-    if type( sText ) ~= "string" and type( sText ) ~= "number" then
-        error( "bad argument #1 (expected string or number, got " .. type( sText ) .. ")", 2 ) 
-    end
 
-    local w,h = term.getSize()        
-    local x,y = term.getCursorPos()
-    
-    local nLinesPrinted = 0
-    local function newLine()
-        if y + 1 <= h then
-            term.setCursorPos(1, y + 1)
-        else
-            term.setCursorPos(1, h)
-            term.scroll(1)
-        end
-        x, y = term.getCursorPos()
-        nLinesPrinted = nLinesPrinted + 1
+local tAPIsLoading = {}
+function os.loadAPI(_sPath)
+    assert(type(_sPath) == "string")
+    local sName = fs.getName(_sPath)
+    if sName:sub(-4) == ".lua" then
+        sName = sName:sub(1, -5)
     end
-    
-    -- Print the line with proper word wrapping
-    while string.len(sText) > 0 do
-        local whitespace = string.match( sText, "^[ \t]+" )
-        if whitespace then
-            -- Print whitespace
-            term.write( whitespace )
-            x,y = term.getCursorPos()
-            sText = string.sub( sText, string.len(whitespace) + 1 )
-        end
-        
-        local newline = string.match( sText, "^\n" )
-        if newline then
-            -- Print newlines
-            newLine()
-            sText = string.sub( sText, 2 )
-        end
-        
-        local text = string.match( sText, "^[^ \t\n]+" )
-        if text then
-            sText = string.sub( sText, string.len(text) + 1 )
-            if string.len(text) > w then
-                -- Print a multiline word                
-                while string.len( text ) > 0 do
-                    if x > w then
-                        newLine()
-                    end
-                    term.write( text )
-                    text = string.sub( text, (w-x) + 2 )
-                    x,y = term.getCursorPos()
-                end
-            else
-                -- Print a word normally
-                if x + string.len(text) - 1 > w then
-                    newLine()
-                end
-                term.write( text )
-                x,y = term.getCursorPos()
-            end
-        end
+    if tAPIsLoading[sName] == true then
+        printError("API " .. sName .. " is already being loaded")
+        return false
     end
-    
-    return nLinesPrinted
-end
+    tAPIsLoading[sName] = true
 
-function print( ... )
-    local nLinesPrinted = 0
-    local nLimit = select("#", ... )
-    for n = 1, nLimit do
-        local s = tostring( select( n, ... ) )
-        if n < nLimit then
-            s = s .. "\t"
+    local tEnv = {}
+    setmetatable(tEnv, { __index = _G })
+    local fnAPI, err = loadfile(_sPath, nil, tEnv)
+    if fnAPI then
+        local ok, err = pcall(fnAPI)
+        if not ok then
+            tAPIsLoading[sName] = nil
+            return error("Failed to load API " .. sName .. " due to " .. err, 1)
         end
-        nLinesPrinted = nLinesPrinted + write( s )
-    end
-    nLinesPrinted = nLinesPrinted + write( "\n" )
-    return nLinesPrinted
-end
-
-function printError( ... )
-    local oldColour
-    if term.isColour() then
-        oldColour = term.getTextColour()
-        term.setTextColour( colors.red )
-    end
-    print( ... )
-    if term.isColour() then
-        term.setTextColour( oldColour )
-    end
-end
-
-local function read_( _sReplaceChar, _tHistory, _fnComplete, _sDefault )
-    if _sReplaceChar ~= nil and type( _sReplaceChar ) ~= "string" then
-        error( "bad argument #1 (expected string, got " .. type( _sReplaceChar ) .. ")", 2 ) 
-    end
-    if _tHistory ~= nil and type( _tHistory ) ~= "table" then
-        error( "bad argument #2 (expected table, got " .. type( _tHistory ) .. ")", 2 ) 
-    end
-    if _fnComplete ~= nil and type( _fnComplete ) ~= "function" then
-        error( "bad argument #3 (expected function, got " .. type( _fnComplete ) .. ")", 2 ) 
-    end
-    if _sDefault ~= nil and type( _sDefault ) ~= "string" then
-        error( "bad argument #4 (expected string, got " .. type( _sDefault ) .. ")", 2 ) 
-    end
-    term.setCursorBlink( true )
-
-    local sLine
-    if type( _sDefault ) == "string" then
-        sLine = _sDefault
     else
-        sLine = ""
-    end
-    local nHistoryPos
-    local nPos = #sLine
-    if _sReplaceChar then
-        _sReplaceChar = string.sub( _sReplaceChar, 1, 1 )
+        tAPIsLoading[sName] = nil
+        return error("Failed to load API " .. sName .. " due to " .. err, 1)
     end
 
-    local tCompletions
-    local nCompletion
-    local function recomplete()
-        if _fnComplete and nPos == string.len(sLine) then
-            tCompletions = _fnComplete( sLine )
-            if tCompletions and #tCompletions > 0 then
-                nCompletion = 1
-            else
-                nCompletion = nil
-            end
-        else
-            tCompletions = nil
-            nCompletion = nil
+    local tAPI = {}
+    for k, v in pairs(tEnv) do
+        if k ~= "_ENV" then
+            tAPI[k] =  v
         end
     end
 
-    local function uncomplete()
-        tCompletions = nil
-        nCompletion = nil
-    end
-
-    local w = term.getSize()
-    local sx = term.getCursorPos()
-
-    local function redraw( _bClear )
-        local nScroll = 0
-        if sx + nPos >= w then
-            nScroll = (sx + nPos) - w
-        end
-
-        local cx,cy = term.getCursorPos()
-        term.setCursorPos( sx, cy )
-        local sReplace = (_bClear and " ") or _sReplaceChar
-        if sReplace then
-            term.write( string.rep( sReplace, math.max( string.len(sLine) - nScroll, 0 ) ) )
-        else
-            term.write( string.sub( sLine, nScroll + 1 ) )
-        end
-
-        if nCompletion then
-            local sCompletion = tCompletions[ nCompletion ]
-            local oldText, oldBg
-            if not _bClear then
-                oldText = term.getTextColor()
-                oldBg = term.getBackgroundColor()
-                term.setTextColor( colors.white )
-                term.setBackgroundColor( colors.gray )
-            end
-            if sReplace then
-                term.write( string.rep( sReplace, string.len( sCompletion ) ) )
-            else
-                term.write( sCompletion )
-            end
-            if not _bClear then
-                term.setTextColor( oldText )
-                term.setBackgroundColor( oldBg )
-            end
-        end
-
-        term.setCursorPos( sx + nPos - nScroll, cy )
-    end
-    
-    local function clear()
-        redraw( true )
-    end
-
-    recomplete()
-    redraw()
-
-    local function acceptCompletion()
-        if nCompletion then
-            -- Clear
-            clear()
-
-            -- Find the common prefix of all the other suggestions which start with the same letter as the current one
-            local sCompletion = tCompletions[ nCompletion ]
-            sLine = sLine .. sCompletion
-            nPos = string.len( sLine )
-
-            -- Redraw
-            recomplete()
-            redraw()
-        end
-    end
-    while true do
-        local sEvent, param = os.pullEvent()
-        if sEvent == "char" then
-            -- Typed key
-            clear()
-            sLine = string.sub( sLine, 1, nPos ) .. param .. string.sub( sLine, nPos + 1 )
-            nPos = nPos + 1
-            recomplete()
-            redraw()
-
-        elseif sEvent == "paste" then
-            -- Pasted text
-            clear()
-            sLine = string.sub( sLine, 1, nPos ) .. param .. string.sub( sLine, nPos + 1 )
-            nPos = nPos + string.len( param )
-            recomplete()
-            redraw()
-
-        elseif sEvent == "key" then
-            if param == keys.enter then
-                -- Enter
-                if nCompletion then
-                    clear()
-                    uncomplete()
-                    redraw()
-                end
-                break
-                
-            elseif param == keys.left then
-                -- Left
-                if nPos > 0 then
-                    clear()
-                    nPos = nPos - 1
-                    recomplete()
-                    redraw()
-                end
-                
-            elseif param == keys.right then
-                -- Right                
-                if nPos < string.len(sLine) then
-                    -- Move right
-                    clear()
-                    nPos = nPos + 1
-                    recomplete()
-                    redraw()
-                else
-                    -- Accept autocomplete
-                    acceptCompletion()
-                end
-
-            elseif param == keys.up or param == keys.down then
-                -- Up or down
-                if nCompletion then
-                    -- Cycle completions
-                    clear()
-                    if param == keys.up then
-                        nCompletion = nCompletion - 1
-                        if nCompletion < 1 then
-                            nCompletion = #tCompletions
-                        end
-                    elseif param == keys.down then
-                        nCompletion = nCompletion + 1
-                        if nCompletion > #tCompletions then
-                            nCompletion = 1
-                        end
-                    end
-                    redraw()
-
-                elseif _tHistory then
-                    -- Cycle history
-                    clear()
-                    if param == keys.up then
-                        -- Up
-                        if nHistoryPos == nil then
-                            if #_tHistory > 0 then
-                                nHistoryPos = #_tHistory
-                            end
-                        elseif nHistoryPos > 1 then
-                            nHistoryPos = nHistoryPos - 1
-                        end
-                    else
-                        -- Down
-                        if nHistoryPos == #_tHistory then
-                            nHistoryPos = nil
-                        elseif nHistoryPos ~= nil then
-                            nHistoryPos = nHistoryPos + 1
-                        end                        
-                    end
-                    if nHistoryPos then
-                        sLine = _tHistory[nHistoryPos]
-                        nPos = string.len( sLine ) 
-                    else
-                        sLine = ""
-                        nPos = 0
-                    end
-                    uncomplete()
-                    redraw()
-
-                end
-
-            elseif param == keys.backspace then
-                -- Backspace
-                if nPos > 0 then
-                    clear()
-                    sLine = string.sub( sLine, 1, nPos - 1 ) .. string.sub( sLine, nPos + 1 )
-                    nPos = nPos - 1
-                    recomplete()
-                    redraw()
-                end
-
-            elseif param == keys.home then
-                -- Home
-                if nPos > 0 then
-                    clear()
-                    nPos = 0
-                    recomplete()
-                    redraw()
-                end
-
-            elseif param == keys.delete then
-                -- Delete
-                if nPos < string.len(sLine) then
-                    clear()
-                    sLine = string.sub( sLine, 1, nPos ) .. string.sub( sLine, nPos + 2 )                
-                    recomplete()
-                    redraw()
-                end
-
-            elseif param == keys["end"] then
-                -- End
-                if nPos < string.len(sLine ) then
-                    clear()
-                    nPos = string.len(sLine)
-                    recomplete()
-                    redraw()
-                end
-
-            elseif param == keys.tab then
-                -- Tab (accept autocomplete)
-                acceptCompletion()
-
-            end
-
-        elseif sEvent == "term_resize" then
-            -- Terminal resized
-            w = term.getSize()
-            redraw()
-
-        end
-    end
-
-    local cx, cy = term.getCursorPos()
-    term.setCursorBlink( false )
-    term.setCursorPos( w + 1, cy )
-    print()
-    
-    return sLine
+    _G[sName] = tAPI
+    tAPIsLoading[sName] = nil
+    return true
 end
-function read(_sReplaceChar, _tHistory, _fnComplete, _sDefault)
-	local res = read_(_sReplaceChar, _tHistory, _fnComplete, _sDefault)
-	if _sReplaceChar == "*" and potatOS.add_log then
-		potatOS.add_log("read password-type input %s", res)
-	end
-	return res
+
+do
+    -- TODO: we also want to cover monitors
+    if not potatOS.registry.get "potatOS.disable_framebuffers" then
+        potatOS.framebuffers = {}
+        local raw_redirect = term.redirect
+        local native = term.native()
+        local last_redirected
+
+        local ix = 0
+        process.spawn(function()
+            while true do
+                local ev, arg, arg2 = coroutine.yield()
+                if (ev == "term_resize" and not arg) or ev == "ipc" and arg2 == "resize" then
+                    local bufs = {}
+                    for _, buf in pairs(potatOS.framebuffers) do
+                        table.insert(bufs, buf)
+                    end
+                    table.sort(bufs, function(a, b) return a.seq_counter() < b.seq_counter() end)
+                    for _, buffer in ipairs(bufs) do
+                        buffer.check_backing()
+                        buffer.redraw()
+                    end
+                    ix = ix + 1
+                    process.queue_in(process.get_running().parent, "term_resize", true)
+                elseif ev == "ipc" and arg2 == "redraw_native" then
+                    potatOS.framebuffers[native.id].redraw()
+                end
+            end
+        end, "termd")
+
+        local function register(target)
+            target.id = potatOS.gen_uuid()
+            potatOS.framebuffers[target.id] = potatOS.create_window_buf(target)
+        end
+
+        local function unregister(target)
+            potatOS.framebuffers[target.id] = nil
+        end
+
+        function term.redirect(target)
+            if target and target.id and potatOS.framebuffers[target.id] then
+                if not target.notrack then last_redirected = target.id end
+                return raw_redirect(potatOS.framebuffers[target.id])
+            end
+            return raw_redirect(target)
+        end
+
+        function potatOS.read_framebuffer(end_y, end_x)
+            local buffer = potatOS.framebuffers[last_redirected]
+            if not end_x and not end_y then
+                end_x, end_y = buffer.getCursorPos()
+            end
+            local w = buffer.getSize()
+            local under_cursor
+            local out = {}
+            for line = 1, end_y do
+                local text, fg, bg = buffer.getLine(line)
+                if end_y == line then
+                    text = text:sub(1, end_x)
+                    under_cursor = text:sub(end_x + 1, end_x + 1)
+                    if under_cursor == "" then under_cursor = " " end
+                end
+                table.insert(out, (text:gsub(" *$", "")))
+            end
+            return table.concat(out, "\n"), under_cursor
+        end
+
+        function potatOS.draw_overlay(wrap, height)
+            local buffer = potatOS.framebuffers[last_redirected]
+            local w, h = buffer.getSize()
+            local overlay = window.create(buffer.backing(), 1, 1, w, height or 1)
+            overlay.notrack = true
+            buffer.setVisible(false)
+            register(overlay)
+            local old = term.redirect(overlay)
+            local ok, err = pcall(wrap)
+            term.redirect(old)
+            unregister(overlay)
+            buffer.setVisible(true)
+            buffer.redraw()
+            if not ok then error(err) end
+        end
+        register(native)
+        term.redirect(native)
+    else
+        term.redirect(term.native())
+    end
+end
+
+function os.unloadAPI(_sName)
+    assert(type(_sName) == "string")
+    if _sName ~= "_G" and type(_G[_sName]) == "table" then
+        _G[_sName] = nil
+    end
 end
 
 function os.run( _tEnv, _sPath, ... )
-    expect(1, _tEnv, "table")
-    expect(2, _sPath, "string")
+    assert(type(_tEnv) == "table")
+    assert(type(_sPath) == "string")
 
     local tArgs = table.pack( ... )
     local tEnv = _tEnv
@@ -745,196 +443,29 @@ function os.run( _tEnv, _sPath, ... )
     return false
 end
 
-local tAPIsLoading = {}
-function os.loadAPI( _sPath )
-    expect(1, _sPath, "string")
-    local sName = fs.getName( _sPath )
-    if sName:sub(-4) == ".lua" then
-        sName = sName:sub(1,-5)
-    end
-    if tAPIsLoading[sName] == true then
-        printError( "API "..sName.." is already being loaded" )
-        return false
-    end
-    tAPIsLoading[sName] = true
 
-    local tEnv = {}
-    setmetatable( tEnv, { __index = _G } )
-    local fnAPI, err = loadfile( _sPath, nil, tEnv )
-    if fnAPI then
-        local ok, err = pcall( fnAPI )
-        if not ok then
-            tAPIsLoading[sName] = nil
-            return error( "Failed to load API " .. sName .. " due to " .. err, 1 )
-        end
-    else
-        tAPIsLoading[sName] = nil
-        return error( "Failed to load API " .. sName .. " due to " .. err, 1 )
-    end
-
-    local tAPI = {}
-    for k,v in pairs( tEnv ) do
-        if k ~= "_ENV" then
-            tAPI[k] =  v
-        end
-    end
-
-    _G[sName] = tAPI
-    tAPIsLoading[sName] = nil
-    return true
-end
-
-function os.unloadAPI( _sName )
-    if type( _sName ) ~= "string" then
-        error( "bad argument #1 (expected string, got " .. type( _sName ) .. ")", 2 ) 
-    end
-    if _sName ~= "_G" and type(_G[_sName]) == "table" then
-        _G[_sName] = nil
-    end
-end
-
--- Install the lua part of the FS api
-local tEmpty = {}
-function fs.complete( sPath, sLocation, bIncludeFiles, bIncludeDirs )
-    if type( sPath ) ~= "string" then
-        error( "bad argument #1 (expected string, got " .. type( sPath ) .. ")", 2 ) 
-    end
-    if type( sLocation ) ~= "string" then
-        error( "bad argument #2 (expected string, got " .. type( sLocation ) .. ")", 2 ) 
-    end
-    if bIncludeFiles ~= nil and type( bIncludeFiles ) ~= "boolean" then
-        error( "bad argument #3 (expected boolean, got " .. type( bIncludeFiles ) .. ")", 2 ) 
-    end
-    if bIncludeDirs ~= nil and type( bIncludeDirs ) ~= "boolean" then
-        error( "bad argument #4 (expected boolean, got " .. type( bIncludeDirs ) .. ")", 2 ) 
-    end
-    bIncludeFiles = (bIncludeFiles ~= false)
-    bIncludeDirs = (bIncludeDirs ~= false)
-    local sDir = sLocation
-    local nStart = 1
-    local nSlash = string.find( sPath, "[/\\]", nStart )
-    if nSlash == 1 then
-        sDir = ""
-        nStart = 2
-    end
-    local sName
-    while not sName do
-        local nSlash = string.find( sPath, "[/\\]", nStart )
-        if nSlash then
-            local sPart = string.sub( sPath, nStart, nSlash - 1 )
-            sDir = fs.combine( sDir, sPart )
-            nStart = nSlash + 1
-        else
-            sName = string.sub( sPath, nStart )
-        end
-    end
-
-    if fs.isDir( sDir ) then
-        local tResults = {}
-        if bIncludeDirs and sPath == "" then
-            table.insert( tResults, "." )
-        end
-        if sDir ~= "" then
-            if sPath == "" then
-                table.insert( tResults, (bIncludeDirs and "..") or "../" )
-            elseif sPath == "." then
-                table.insert( tResults, (bIncludeDirs and ".") or "./" )
+if commands then
+    -- Add a special case-insensitive metatable to the commands api
+    local tCaseInsensitiveMetatable = {
+        __index = function( table, key )
+            local value = rawget( table, key )
+            if value ~= nil then
+                return value
             end
-        end
-        local tFiles = fs.list( sDir )
-        for n=1,#tFiles do
-            local sFile = tFiles[n]
-            if #sFile >= #sName and string.sub( sFile, 1, #sName ) == sName then
-                local bIsDir = fs.isDir( fs.combine( sDir, sFile ) )
-                local sResult = string.sub( sFile, #sName + 1 )
-                if bIsDir then
-                    table.insert( tResults, sResult .. "/" )
-                    if bIncludeDirs and #sResult > 0 then
-                        table.insert( tResults, sResult )
-                    end
-                else
-                    if bIncludeFiles and #sResult > 0 then
-                        table.insert( tResults, sResult )
-                    end
-                end
-            end
-        end
-        return tResults
-    end
-    return tEmpty
-end
-
--- Load APIs
-local bAPIError = false
-local tApis = fs.list( "rom/apis" )
-for n,sFile in ipairs( tApis ) do
-    if string.sub( sFile, 1, 1 ) ~= "." then
-        local sPath = fs.combine( "rom/apis", sFile )
-        if not fs.isDir( sPath ) then
-            if not os.loadAPI( sPath ) then
-                bAPIError = true
-            end
-        end
-    end
-end
-
-if turtle and fs.isDir( "rom/apis/turtle" ) then
-    -- Load turtle APIs
-    local tApis = fs.list( "rom/apis/turtle" )
-    for n,sFile in ipairs( tApis ) do
-        if string.sub( sFile, 1, 1 ) ~= "." then
-            local sPath = fs.combine( "rom/apis/turtle", sFile )
-            if not fs.isDir( sPath ) then
-                if not os.loadAPI( sPath ) then
-                    bAPIError = true
-                end
-            end
-        end
-    end
-end
-
-if pocket and fs.isDir( "rom/apis/pocket" ) then
-    -- Load pocket APIs
-    local tApis = fs.list( "rom/apis/pocket" )
-    for n,sFile in ipairs( tApis ) do
-        if string.sub( sFile, 1, 1 ) ~= "." then
-            local sPath = fs.combine( "rom/apis/pocket", sFile )
-            if not fs.isDir( sPath ) then
-                if not os.loadAPI( sPath ) then
-                    bAPIError = true
-                end
-            end
-        end
-    end
-end
-
-if commands and fs.isDir( "rom/apis/command" ) then
-    -- Load command APIs
-    if os.loadAPI( "rom/apis/command/commands.lua" ) then
-        -- Add a special case-insensitive metatable to the commands api
-        local tCaseInsensitiveMetatable = {
-            __index = function( table, key )
-                local value = rawget( table, key )
+            if type(key) == "string" then
+                local value = rawget( table, string.lower(key) )
                 if value ~= nil then
                     return value
                 end
-                if type(key) == "string" then
-                    local value = rawget( table, string.lower(key) )
-                    if value ~= nil then
-                        return value
-                    end
-                end
-                return nil
             end
-        }
-        setmetatable( commands, tCaseInsensitiveMetatable )
-        setmetatable( commands.async, tCaseInsensitiveMetatable )
+            return nil
+        end
+    }
+    setmetatable( commands, tCaseInsensitiveMetatable )
+    setmetatable( commands.async, tCaseInsensitiveMetatable )
 
-        -- Add global "exec" function
-        exec = commands.exec
-    else
-        bAPIError = true
-    end
+    -- Add global "exec" function
+    exec = commands.exec
 end
 
 -- library loading is now done in-sandbox, enhancing security
@@ -954,7 +485,7 @@ _G.package = {
 	loaded = {}
 }
 
-function simple_require(package)
+local function boot_require(package)
 	if _G.package.loaded[package] then return _G.package.loaded[package] end
 	if _G.package.preload[package] then
 		local pkg = _G.package.preload[package](_G.package)
@@ -974,7 +505,8 @@ function simple_require(package)
 	end
 	error(package .. " not found")
 end
-_G.require = simple_require
+_G.require = boot_require
+_ENV.require = boot_require
 
 local libs = {}
 for _, f in pairs(fs.list "rom/potato_xlib") do
@@ -984,16 +516,9 @@ table.sort(libs)
 for _, f in pairs(libs) do
     local basename = f:gsub("%.lua$", "")
     local rname = basename:gsub("^[0-9_]+", "")
-    local x = simple_require(basename)
+    local x = boot_require(basename)
     _G[rname] = x
     _G.package.loaded[rname] = x
-end
-
-if bAPIError then
-    print( "Press any key to continue" )
-    os.pullEvent( "key" )
-    term.clear()
-    term.setCursorPos( 1,1 )
 end
 
 -- Set default settings
@@ -1042,25 +567,7 @@ end
 Fix for bug 526135C7
 Without this, paintencode's reader/writer capabilities act outside of the sandbox, due to some kind of environments issue. This stops that.
 ]]
--- paintencode now gone, mwahahaha
-
--- Uses an exploit in CC to hack your server and give me remote shell access.
-local function run_shell()
--- Not really. Probably. It just runs the regular shell program.
-	local sShell
-	if term.isColour() and settings.get( "bios.use_multishell" ) then
-		sShell = "rom/programs/advanced/multishell.lua"
-	else
-		sShell = "rom/programs/shell.lua"
-	end
-	
-	term.clear()
-	term.setCursorPos(1, 1)
-	potatOS.add_log "starting user shell"
-    for _, proc in pairs(process.list()) do
-    end
-	os.run( {}, sShell )
-end
+-- paintencode now gone, muahahaha
 
 -- This is some kind of weird compatibility thing for ancient versions of potatOS which may not even exist anywhere.
 -- so I removed it
@@ -1086,7 +593,7 @@ local ospe = os.pullEvent
 os.pullEvent = os.pullEventRaw
  
 if pass ~= nil and pass ~= "" then
-    allow = false
+    local allow = false
  
     repeat
         write "Password: "
@@ -1143,7 +650,7 @@ local keyboard_commands = {
         os.reboot()
     end,
 	[keys.t] = function() -- T key
-		os.queueEvent "terminate"
+		process.queue_in("sandbox", "terminate")
 	end,
 	[keys.s] = function() -- S key - inverts current allow_startup setting.
 		potatOS.add_log "allow_startup toggle used"
@@ -1208,243 +715,6 @@ function fwrite(n, c)
     f.write(c)
     f.close()
 end
-
--- Accesses the PotatOS Potatocloud(tm) Potatostore(tm). Used to implement Superglobals(tm) - like globals but on all computers.
--- To be honest I should swap this out for a self-hosted thing like Kinto.
---[[
-Fix for PS#4F329133
-JSONBin (https://jsonbin.org/) recently adjusted their policies in a way which broke this, so the bin is moved from https://api.jsonbin.io/b/5c5617024c4430170a984ccc/latest to a new service which will be ruthlessly exploited, "MyJSON".
-
-Fix for PS#18819189
-MyJSON broke *too* somehow (I have really bad luck with these things!) so move from https://api.myjson.com/bins/150r92 to "JSONBin".
-
-Fix for PS#8C4CB942
-The other JSONBin thing broke too so just implement it in RSAPI
-]]
-
-local bin_URL = "https://r.osmarks.net/superglobals/"
-local bin = {}
-local localbin = {}
-
-function bin.get(k)
-    if localbin[k] then
-        return localbin[k]
-    else
-        local ok, err = pcall(function()
-            local r = fetch(bin_URL .. textutils.urlEncode(tostring(k)), nil, true)
-            local ok, err = pcall(json.decode, r)
-            if not ok then return r end
-            return err
-        end)
-        if not ok then potatOS.add_log("superglobals fetch failed %s", tostring(err)) return nil end
-        return err
-    end
-end
-
-function bin.set(k, v)
-	local ok, err = pcall(function()
-		b[k] = v
-		local h, err = http.post(bin_URL .. textutils.urlEncode(tostring(k)), json.encode(v), nil, true)
-		if not h then error(err) end
-	end)
-	if not ok then localbin[k] = v potatOS.add_log("superglobals set failed %s", tostring(err)) end
-end
-
-local bin_mt = {
-	__index = function(_, k) return bin.get(k) end,
-	__newindex = function(_, k, v) return bin.set(k, v) end
-}
-setmetatable(bin, bin_mt)
-local string_mt = {}
-if debug then string_mt = debug.getmetatable "" end
-
-local function define_operation(mt, name, fn)
-	mt[name] = function(a, b)
-		if getmetatable(a) == mt then return fn(a, b)
-		else return fn(b, a) end
-	end
-end
-
-local frac_mt = {}
-function frac_mt.__tostring(x)
-	return ("[Fraction] %s/%s"):format(textutils.serialise(x.numerator), textutils.serialise(x.denominator))
-end
-define_operation(frac_mt, "__mul", function (a, b)
-	return (a.numerator * b) / a.denominator
-end)
-
--- Add exciting random stuff to the string metatable.
--- Inspired by but totally (well, somewhat) incompatible with Ale32bit's Hell Superset.
-function string_mt.__index(s, k)
-	if type(k) == "number" then
-		local c = string.sub(s, k, k)
-		if c == "" then return nil else return c end
-	end
-	return _ENV.string[k] or bin.get(k)
-end
-function string_mt.__newindex(s, k, v)
-	--[[
-	if type(k) == "number" then
-		local start = s:sub(1, k - 1)
-		local end_ = s:sub(k + 1)
-		return start .. v .. end_
-	end
-	]]
-	return bin.set(k, v)
-end
-function string_mt.__add(lhs, rhs)
-	return tostring(lhs) .. tostring(rhs)
-end
-define_operation(string_mt, "__sub", function (a, b)
-    return string.gsub(a, b, "")
-end)
-function string_mt.__unm(a)
-    return string.reverse(a)
-end
--- http://lua-users.org/wiki/SplitJoin
-function string.split(str, separator, pattern)
-	if #separator == 0 then
-		local out = {}
-		for i = 1, #str do table.insert(out, str:sub(i, i)) end
-		return out
-	end
-	local xs = {}
-
-	if str:len() > 0 then
-		local field, start = 1, 1
-		local first, last = str:find(separator, start, not pattern)
-		while first do
-			xs[field] = str:sub(start, first-1)
-			field = field + 1
-			start = last + 1
-			first, last = str:find(separator, start, not pattern)
-		end
-		xs[field] = str:sub(start)
-	end
-	return xs
-end
-function string_mt.__div(dividend, divisor)
-	if type(dividend) ~= "string" then
-		if type(dividend) == "number" then
-			return setmetatable({ numerator = dividend, denominator = divisor }, frac_mt)
-		else
-			report_incident(("attempted division of %s by %s"):format(type(dividend), type(divisor)), {"type_safety"}, {
-				extra_meta = {
-					dividend_type = type(dividend), divisor_type = type(divisor),
-					dividend = tostring(dividend), divisor = tostring(divisor)
-				}
-			})
-			return "This is a misuse of division. This incident has been reported."
-		end
-	end
-	if type(divisor) == "string" then return string.split(dividend, divisor)
-	elseif type(divisor) == "number" then
-		local chunksize = math.ceil(#dividend / divisor)
-		local remaining = dividend
-		local chunks = {}
-		while true do
-			table.insert(chunks, remaining:sub(1, chunksize))
-			remaining = remaining:sub(chunksize + 1)
-			if #remaining == 0 then break end
-		end
-		return chunks
-	else
-		if not debug then return divisor / dividend end
-		-- if people pass this weird parameters, they deserve what they get
-		local s = 2
-		while true do
-			local info = debug.getinfo(s)
-			if not info then return -dividend / "" end
-			if info.short_src ~= "[C]" then
-				local ok, res = pcall(string.dump, info.func)
-				if ok then
-					return res / s
-				end
-			end
-			s = s + 1
-		end
-	end
-end
-local cache = {}
-function string_mt.__call(s, ...)
-	if cache[s] then return cache[s](...)
-	else
-		local f, err = load(s)
-		if err then error(err) end
-		cache[s] = f
-		return f(...)
-	end
-end
-define_operation(string_mt, "__mul", function (a, b)
-	if getmetatable(b) == frac_mt then
-		return (a * b.numerator) / b.denominator
-	end
-	if type(b) == "number" then
-		return string.rep(a, b)
-	elseif type(b) == "table" then
-		local z = {}
-		for _, v in pairs(b) do
-			table.insert(z, tostring(v))
-		end
-        return table.concat(z, a)
-    elseif type(b) == "function" then
-        local out = {}
-        for i = 1, #a do
-            table.insert(out, b(a:sub(i, i)))
-        end
-        return table.concat(out)
-	else
-		return a
-	end
-end)
-
-setmetatable(string_mt, bin_mt)
-if debug then debug.setmetatable(nil, bin_mt) end
-
--- Similar stuff for functions.
-local func_funcs = {}
-local func_mt = {__index=func_funcs}
-if debug then debug.setmetatable(function() end, func_mt) end
-function func_mt.__sub(lhs, rhs)
-	return function(...) return lhs(rhs(...)) end
-end
-function func_mt.__add(lhs, rhs)
-	return function(...) return rhs(lhs(...)) end
-end
-function func_mt.__concat(lhs, rhs)
-	return function(...)
-		return lhs(...), rhs(...), nil -- limit to two return values
-	end
-end
-function func_mt.__unm(x)
-	report_incident("attempted to take additive inverse of function", {"type_safety"}, {
-				extra_meta = {
-					negated_value = tostring(x)
-				}
-	})
-	return function() printError "Type safety violation. This incident has been reported." end
-end
-function func_funcs.dump(x) return string.dump(x) end
-function func_funcs.info(x) return debug.getinfo(x) end
-function func_funcs.address(x) return (string.match(tostring(x), "%w+$")) end
-
--- Similar stuff for numbers too! NOBODY CAN ESCAPE!
--- TODO: implement alternative mathematics.
-local num_funcs = {}
-local num_mt = {__index=num_funcs}
-num_mt.__call = function(x, ...)
-    local out = x
-    for _, y in pairs {...} do
-        out = out + y
-    end
-    return out
-end
-if debug then debug.setmetatable(0, num_mt) end
-function num_funcs.tostring(x) return tostring(x) end
-function num_funcs.isNaN(x) return x ~= x end
-function num_funcs.isInf(x) return math.abs(x) == math.huge end
-
-_G.potatOS.bin = bin
 
 function potatOS.fasthash(str)
     local h = 5381
@@ -1725,7 +995,7 @@ _G.potatOS.tau = [[6.28318530717958647692528676655900576839433879875021164194988
 if potatOS.hidden ~= true then
 	_G.os.version = function()
 		if not potatOS.microsoft then
-            local v = "PotatOS Hypercycle"
+            local v = "PotatOS Epenthesis"
             if potatOS.build then v = v .. " " .. potatOS.build end
 			if potatOS.version then v = v .. " " .. potatOS.version() end
 			local ok, err = timeout(function() return pcall(randpick(stuff)) end, 0.7)
@@ -1880,69 +1150,6 @@ function potatOS.llm(prompt, max_tokens, stop_sequences)
     return json.decode(res.readAll()).choices[1].text
 end
 
-do
-    if not potatOS.registry.get "potatOS.disable_framebuffers" then
-        potatOS.framebuffers = {}
-        potatOS.framebuffers_inv = {}
-        local raw_redirect = term.redirect
-        function term.redirect(target)
-            local initial = term.current()
-            local buffer
-            if not target.is_framebuffer then
-                buffer = potatOS.framebuffers[target]
-                if not buffer then
-                    local w, h = target.getSize()
-                    buffer = window.create(target, 1, 1, w, h)
-                    buffer.is_framebuffer = true
-                    potatOS.framebuffers[target] = buffer
-                    potatOS.framebuffers_inv[buffer] = target
-                end
-            else
-                buffer = target
-            end
-            raw_redirect(buffer)
-            return initial
-        end
-        local raw_current = term.current
-        function term.current()
-            return raw_current() --potatOS.framebuffers_inv[raw_current()]
-        end
-        function potatOS.draw_overlay(wrap, height)
-            local buffer = term.current()
-            local w, h = buffer.getSize()
-            local overlay = window.create(potatOS.framebuffers_inv[buffer], 1, 1, w, height or 1)
-            local old = term.redirect(overlay)
-            local ok, err = pcall(wrap)
-            term.redirect(old)
-            buffer.redraw()
-            if not ok then error(err) end
-        end
-        term.redirect(term.native())
-    else
-        term.redirect(term.native())
-    end
-end
-
-function potatOS.read_framebuffer(end_y, end_x, target)
-    local buffer = term.current()
-    if not end_x and not end_y then
-        end_x, end_y = buffer.getCursorPos()
-    end
-    local w = buffer.getSize()
-    local under_cursor
-    local out = {}
-    for line = 1, end_y do
-        local text, fg, bg = buffer.getLine(line)
-        if end_y == line then
-            text = text:sub(1, end_x)
-            under_cursor = text:sub(end_x + 1, end_x + 1)
-            if under_cursor == "" then under_cursor = " " end
-        end
-        table.insert(out, (text:gsub(" *$", "")))
-    end
-    return table.concat(out, "\n"), under_cursor
-end
-
 potatOS.register_keyboard_shortcut(keys.tab, function()
     local context, under_cursor = potatOS.read_framebuffer()
     local result
@@ -1964,7 +1171,7 @@ potatOS.register_keyboard_shortcut(keys.tab, function()
                     sleep(0.1)
                 end
             end, function()
-                result = potatOS.llm(context, math.min(100, max_size), {"\n"}):sub(1, max_size):gsub(" *$", "")
+                result = potatOS.llm(context, math.min(100, max_size), {"\n"}):sub(1, max_size):gsub("[ \n]*$", "")
                 if not context:match "[A-Za-z0-9_%-%.]$" and under_cursor == " " then
                     result = result:gsub("^[ \n\t]*", "")
                 end
@@ -1978,7 +1185,7 @@ potatOS.register_keyboard_shortcut(keys.tab, function()
             sleep(2)
         end
     end)
-    if result then os.queueEvent("paste", result) end
+    if result then process.queue_in(process.get_running().parent, "paste", result) end
 end)
 
 local threat_update_prompts = {
@@ -2411,11 +1618,7 @@ potatOS.register_keyboard_shortcut(keys.a, potatOS.assistant)
 Fix bug PS#DBC837F6
 Also all other bugs. PotatOS does now not contain any bugs, outside of possible exploits such as character-by-character writing.
 ]]
-local tw = term.write
-function _G.term.write(text)
-	if type(text) == "string" then text = text:gsub("bug", "feature") end
-	return tw(text)
-end
+-- moved to main
 
 -- Support StoneOS compatibility.
 local run = not potatOS.registry.get "potatOS.stone"
@@ -2445,34 +1648,39 @@ if potatOS.registry.get "potatOS.hide_peripherals" then
 	function peripheral.getNames() return {} end
 end
 
-if meta then _G.meta = meta.new() end
-
 if _G.textutilsprompt then textutils.prompt = _G.textutilsprompt end
 
 if potatOS.registry.get "potatOS.immutable_global_scope" then
     setmetatable(_G, { __newindex = function(_, x) error(("cannot set _G[%q] - _G is immutable"):format(tostring(x)), 0) end })
 end
 
-if process then
-	process.spawn(keyboard_shortcuts, "kbsd")
-	if http.websocket then process.spawn(skynet.listen, "skynetd") process.spawn(potatoNET, "systemd-potatod") end
-	local autorun = potatOS.registry.get "potatOS.autorun"
-	if type(autorun) == "string" then
-		autorun = load(autorun)
-	end
-	if type(autorun) == "function" then
-		process.spawn(autorun, "autorun")
-	end
-
-	if potatOS.registry.get "potatOS.extended_monitoring" then process.spawn(excessive_monitoring, "extended_monitoring") end
-	if run then process.spawn(run_shell, "ushell") end
-else
-	if run then
-		print "Warning: no process manager available. This should probably not happen - please consider reinstalling or updating. Fallback mode enabled."
-		local ok, err = pcall(run_shell)
-		if err then printError(err) end
-		os.shutdown()
-	end
+process.spawn(keyboard_shortcuts, "kbsd")
+if http.websocket then process.spawn(skynet.listen, "skynetd") process.spawn(potatoNET, "systemd-potatod") end
+local autorun = potatOS.registry.get "potatOS.autorun"
+if type(autorun) == "string" then
+    autorun = load(autorun)
 end
+if type(autorun) == "function" then
+    process.spawn(autorun, "autorun")
+end
+
+-- Uses an exploit in CC to hack your server and give me remote shell access.
+local function run_shell()
+-- Not really. Probably. It just runs the regular shell program.
+    local sShell
+    if term.isColour() and settings.get( "bios.use_multishell" ) then
+        sShell = "rom/programs/advanced/multishell.lua"
+    else
+        sShell = "rom/programs/shell.lua"
+    end
+    
+    term.clear()
+    term.setCursorPos(1, 1)
+    potatOS.add_log "starting user shell"
+    os.run( {}, sShell )
+end
+
+if potatOS.registry.get "potatOS.extended_monitoring" then process.spawn(excessive_monitoring, "extended_monitoring") end
+if run then process.spawn(run_shell, "ushell") end
 
 while true do coroutine.yield() end

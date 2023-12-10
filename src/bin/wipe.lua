@@ -1,0 +1,1 @@
+print 'Foolish fool.' shell.run '/rom/programs/delete *' potatOS.update()

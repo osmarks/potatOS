@@ -1,0 +1,1 @@
+print(potatOS.chuck_norris())

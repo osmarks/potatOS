@@ -57,13 +57,14 @@ button {
 <h1>Welcome to PotatOS!</h1>
 <img src="/potatos.gif" id="im">
 <div>
-Current build: <code>aa934a92</code> (PotatOS Assistant memory), version 460, built 2023-11-14 19:08:00 (UTC).
+Current build: <code>adea933b</code> (try minified version), version 741, built 2023-12-10 14:15:48 (UTC).
 </div>
 <p>&quot;PotatOS&quot; stands for &quot;PotatOS Otiose Transformative Advanced Technology Or Something&quot;.
-<a href="https://git.osmarks.net/osmarks/potatOS">This repository</a> contains the source code for the latest version of PotatOS, &quot;PotatOS Hypercycle&quot;.
+<a href="https://git.osmarks.net/osmarks/potatOS">This repository</a> contains the source code for the latest version of PotatOS, &quot;PotatOS Epenthesis&quot;.
 PotatOS is a groundbreaking &quot;Operating System&quot; for <a href="https://www.computercraft.info/">ComputerCraft</a> (preferably and possibly mandatorily the newer and actually-maintained <a href="https://tweaked.cc/">CC: Tweaked</a>).</p>
-<p>PotatOS Hypercycle is now considered ready for general use and at feature parity with <a href="https://pastebin.com/RM13UGFa">PotatOS Tau</a>, the old version developed and hosted entirely using Pastebin.
-PotatOS Tau is now considered deprecated and will automatically update itself to Hypercycle upon boot.</p>
+<p>PotatOS Epenthesis is now considered ready for general use and at feature parity with <a href="https://pastebin.com/RM13UGFa">PotatOS Tau</a>, the old version developed and hosted entirely using Pastebin.
+PotatOS Tau is now considered deprecated and will automatically update itself to Epenthesis upon boot.
+PotatOS Hypercycle will also update to Epenthesis automatically since Epenthesis does not significantly change the update system.</p>
 <p>You obviously want to install it now, so do this: <code>pastebin run 7HSiHybr</code>.</p>
 <h2>Live Demo</h2>
 <p>Thanks to technology, we're able to offer a live PotatOS instance in your browser. Press here to start:</p>
@@ -72,6 +73,8 @@ PotatOS Tau is now considered deprecated and will automatically update itself to
 <noscript>
     Experiencing PotatOS requires JavaScript. Please enable it.
 </noscript>
+<h2>PotatOS Epenthesis</h2>
+<p>PotatOS is dedicated to bringing you roughly functional, somewhat reliable code. Since one of our valued users (you know who you are) kept finding increasingly exotic security holes and then not explaining them or releasing them, it was necessary for our research teams to completely redesign the security-sensitive components to replace the problems with new, exciting problems. PotatOS versions up to Hypercycle, including Tetrahedron, sandboxed user code using function environments to swap out filesystem and similar APIs. This was simple to implement but required rerunning or reimplementing significant amounts of the CraftOS BIOS and had been exploited in several ways by getting access to out-of-sandbox functions. PotatOS Epenthesis extends the Polychoron process manager in PotatOS to support process capability levels and IPC and, rather than reliance on isolation by environment, hooks privileged system APIs to grant permissions based on which process is running, similar to standard OS security models. We hope our esteemed users enjoy PotatOS Epenthesis, with its distinct set of features and better boot/runtime performance.</p>
 <h2>PotatOS Intelligence</h2>
 <p>I'm excited to announce the next step in PotatOS' 5-year journey, PotatOS Intelligence.
 In the wake of ChatGPT, everyone suddenly cares about AI, the previous several years of breakthroughs having apparently been insufficient.
@@ -100,7 +103,6 @@ AI will transform the ways we work, live, play, think, become paperclips, breath
 <li>Remote debugging capabilities for development and stuff (highly* secured, via ECC signing on debugging disks and SPUDNET's security features).</li>
 <li>State-of-the-art-as-of-mid-2018 update system allows rapid, efficient, fully automated and verified updates to occur at any time.</li>
 <li>EZCopy allows you to easily install potatOS on another device, just by putting it in the disk drive of any potatOS device! EZCopy is unfortunately disabled on some servers.</li>
-<li>Built-in filesystem backup and restore support for easy tape backups etc.</li>
 <li>Blocks bad programs (like the &quot;Webicity&quot; browser and &quot;BlahOS&quot;) for your own safety.</li>
 <li>Fully-featured coroutine-based process manager. Very fully-featured. No existing code uses most of the features.</li>
 <li>Can run in &quot;hidden mode&quot; where it's at least not obvious at a glance that potatOS is installed.</li>
@@ -128,22 +130,24 @@ AI will transform the ways we work, live, play, think, become paperclips, breath
 <li>Integrated logging mechanism for debugging.</li>
 <li><a href="https://www.youtube.com/watch?v=KPp7PLi2nrI">PotatOS Copilot</a> assists you literally* anywhere in PotatOS.</li>
 <li>Live threat updates using our advanced algorithms.</li>
+<li>PotatOS Epenthesis' rewritten security model fixes many exploits and adds others while reducing boot times.</li>
+<li>IPC mechanism.</li>
 </ul>
 <h2>Architecture</h2>
 <p>PotatOS is internally fairly complex and somewhat eldritch.
 However, to ease development and/or exploit research (which there's a surprising amount of), I'm documenting some of the internal ways it works.</p>
 <h3>Boot process</h3>
 <ul>
-<li>normal ComputerCraft boot process - <code>bios.lua</code> runs <code>rom/programs/shell.lua</code> (or maybe multishell first) runs <code>rom/startup.lua</code> runs <code>startup</code></li>
-<li><code>startup</code> is a somewhat customized copy of Polychoron, which uses a top-level coroutine override to crash <code>bios.lua</code>'s <code>parallel.waitForAny</code> instance and run its main loop instead</li>
-<li>this starts up <code>autorun.lua</code> (which is a compiled bundle of <code>main.lua</code> and <code>lib/*</code>)</li>
-<li>some initialization takes place - the screen is reconfigured a bit, SPF is configured, logfiles are opened, a random seed is generated before user code can meddle, some CraftOS-PC configuration settings are set</li>
-<li>The update daemon is started, and will check for updates every 300±50 seconds</li>
-<li><code>run_with_sandbox</code> runs - if this errors, potatOS will enter a &quot;critical error&quot; state in which it attempts to update after 10 seconds</li>
-<li>more initialization occurs - the device UUID is loaded/generated, a FS overlay is generated, the table of potatOS API functions is configured, <code>xlib/*</code> (userspace libraries) are loaded into the userspace environment, <code>netd</code> (the LAN commands/peripheral daemon) starts, the SPUDNET and disk daemons start (unless configured not to)</li>
-<li>the main sandbox process starts up</li>
-<li>YAFSS (Yet Another File System Sandbox, the sandboxing library in use) generates an environment table from the overrides, FS overlay and other configuration. This is passed as an argument to <code>load</code>, along with the PotatoBIOS code.</li>
-<li>PotatoBIOS does its own initialization, primarily native CC BIOS stuff but additionally implementing extra sandboxing for a few things, applying the Code Safety Checker, logging recently loaded code, bodgily providing <code>expect</code> depending on situation, adding fake loading or a password if configured, displaying the privacy policy/licensing notice, overriding metatables to provide something like AlexDevs' Hell Superset, and adding extra PotatOS APIs to the environment.</li>
+<li>Normal ComputerCraft boot process - <code>bios.lua</code> runs <code>rom/programs/shell.lua</code> (or maybe multishell first) runs <code>rom/startup.lua</code> runs <code>startup</code>.</li>
+<li><code>startup</code> contains the PotatOS process manager, Polychoron, which uses a top-level coroutine override to crash <code>bios.lua</code>'s <code>parallel.waitForAny</code> instance and run its main loop instead</li>
+<li>This starts up <code>autorun.lua</code> (which is a compiled bundle of <code>main.lua</code> and <code>lib/*</code>).</li>
+<li>Miscellaneous initialization occurs - logging is opened, random seeds generated, and configuration adjusted.</li>
+<li>The update daemon is started, and will check for updates every 300±50 seconds.</li>
+<li><code>run_with_sandbox</code> is entered - if this fails, potatOS will enter a &quot;critical error&quot; state in which it attempts to update after 10 seconds.</li>
+<li>More initialization occurs - the device UUID is loaded/generated, a FS overlay is generated, the table of potatOS API functions is configured, <code>xlib/*</code> (userspace libraries) are loaded into the userspace environment, <code>netd</code> (the LAN commands/peripheral daemon) starts, the SPUDNET and disk daemons start (unless configured not to)</li>
+<li>PotatOS hooks the filesystem API to gate access based on the currently running process's capability level.</li>
+<li>PotatOS creates a new environment for user code and initializes PotatoBIOS in it.</li>
+<li>PotatoBIOS does its own initialization - primarily that of the native CC BIOS, as well as the Code Safety Checker, logging of recently loaded code, bodgily providing <code>expect</code> depending on situation, adding fake loading or a password if configured, displaying the privacy policy/licensing notice, overriding metatables to provide something like AlexDevs' Hell Superset, and adding extra PotatOS APIs to the environment.</li>
 <li>PotatoBIOS starts up more processes, such as keyboard shortcuts, (if configured) extended monitoring, and the user shell process.</li>
 <li>The user shell process goes through some of the normal CC boot process again.</li>
 </ul>
@@ -151,14 +155,14 @@ However, to ease development and/or exploit research (which there's a surprising
 <p>The PotatOS userspace API, mostly accessible from <code>_G.potatOS</code>, has absolutely no backward compatibility guarantees.
 It's also not really documented. Fun!
 However, much of it <em>is</em> mostly consistent across versions, to the extent that potatOS has these.</p>
-<p>Here's a list of some of the more useful and/or consistently available functions:</p>
+<p>Here's a list of some of the more useful and/or consistently available functions (TODO UPDATE):</p>
 <ul>
 <li><code>potatOS.add_log(message: string, ...formattingArgs: any)</code> - add a line to the log file - supports <code>string.format</code>-style formatting</li>
 <li><code>potatOS.build -&gt; string</code> - the currently installed potatOS version's build ID (short form)</li>
 <li><code>potatOS.chuck_norris() -&gt; string</code> - fetch random Chuck Norris joke from web API</li>
 <li><code>potatOS.fortune() -&gt; string</code> - fetch random <code>fortune</code> from web API</li>
 <li><code>potatOS.evilify()</code> - mess up 1 in 10 keypresses</li>
-<li><code>potatOS.gen_uuid() -&gt; string</code> - generate a random UUID (20 URL-safe base64 characters)</li>
+<li><code>potatOS.gen_uuid() -&gt; string</code> - generate a random UUID (20 URL-safe base64 characters) (not actually a spec-compliant UUID)</li>
 <li><code>potatOS.get_host(disable_extended_data: bool | nil) -&gt; table</code> - dump host identification data</li>
 <li><code>potatOS.get_location() -&gt; number, number, number | nil</code> - get GPS location, if available. This is fetched every 60 seconds if GPS and a modem are available</li>
 <li><code>potatOS.init_screens()</code> - reset palettes to default</li>
@@ -174,10 +178,17 @@ However, much of it <em>is</em> mostly consistent across versions, to the extent
 <li><code>potatOS.tau -&gt; string</code> - approximately 8101 digits of the mathematical constant τ (tau)</li>
 <li><code>potatOS.update()</code> - force a system update</li>
 <li><code>potatOS.uuid -&gt; string</code> - get the system's PotatOS UUID. This is probably unique amongst all potatOS systems, unless meddling occurs, but is not guaranteed to remain the same on the same &quot;physical&quot; computer, only per installation.</li>
+<li><code>potatOS.assistant_history -&gt; table</code> - PotatOS Intelligence assistant messages.</li>
+<li><code>potatOS.llm(prompt: string, max_tokens: number, stop_sequences: table) -&gt; string</code> - invoke PotatOS Intelligence language model.</li>
+<li><code>potatOS.metaphor() -&gt; string</code> - generate metaphor.</li>
+<li><code>potatOS.unhexize(hex: string) -&gt; table</code> - hex to byte array.</li>
+<li><code>potatOS.hexize(bytes: table) -&gt; string</code> - byte array to hex.</li>
+<li><code>potatOS.shuffle(x: table)</code> - shuffle a list.</li>
 <li><code>process.spawn(fn: () -&gt; nil, name: string | nil, options: table) -&gt; number</code> - spawn a process using the global Polychoron process manager instance. Returns the ID.</li>
-<li><code>process.info(ID: number) -&gt; table</code> - get information about a process, by ID</li>
-<li><code>process.list() -&gt; table</code> - get information for all running processes</li>
-<li><code>_G.init_code -&gt; string</code> - the source code of the running PotatoBIOS instance</li>
+<li><code>process.info(ID: number) -&gt; table</code> - get information about a process, by ID.</li>
+<li><code>process.list() -&gt; table</code> - get information for all running processes.</li>
+<li><code>process.IPC(target: number, ...args: any)</code> - send IPC message to given process.</li>
+<li><code>_G.init_code -&gt; string</code> - the source code of the running PotatoBIOS instance.</li>
 </ul>
 <h2>Reviews</h2>
 <ul>
@@ -199,6 +210,7 @@ However, much of it <em>is</em> mostly consistent across versions, to the extent
 <li>&quot;PotatOS is many, varied, ever-changing, and eternal. Fighting it is like fighting a many-headed monster, which, each time a neck is severed, sprouts a head even fiercer and cleverer than before. You are fighting that which is unfixed, mutating, indestructible.&quot; - someone</li>
 <li>&quot;go use potatos or something&quot; - SwitchCraft3 (official), 2023</li>
 <li>&quot;a lot of backup time is spent during potatos&quot; - Lemmmy, 2022</li>
+<li>&quot;we would need 176000 comparators to store potatOS&quot; - piguman3, 2023</li>
 <li>&quot;potatOS is as steady as a rock&quot; - BlackDragon, 2021</li>
 <li>&quot;PotatOS would be a nice religion&quot; - piguman3, 2022</li>
 <li>&quot;It has caused multiple issues to staff of multiple CC servers.&quot; - Wojbie, 2023</li>
