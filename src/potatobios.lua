@@ -321,6 +321,8 @@ function os.loadAPI(_sPath)
     return true
 end
 
+os.loadAPI "rom/apis/settings.lua"
+
 do
     -- TODO: we also want to cover monitors
     if not potatOS.registry.get "potatOS.disable_framebuffers" then
@@ -923,7 +925,8 @@ Allow exiting the PotatoNET chat, as termination probably doesn't work, since it
 	skynet.send(chan, { username = username, message = "Connected" })
     parallel.waitForAny(send, recv)
 end
- 
+
+-- copied from osmarks.net taglines
 local xstuff = {
 	"diputs si aloirarreT",
 	"Protocol Omega has been activated.",
@@ -932,6 +935,28 @@ local xstuff = {
 	"I have the only antidote.",
 	"They are coming for you.",
 	"Help, I'm trapped in an OS factory!",
+    "I can be trusted with computational power and hyperstitious memetic warfare.",
+    "Wheels are turning. Wheels within wheels within wheels.",
+    "The Internet.",
+    "If you're reading this, we own your soul.",
+    "The future is already here - it's just not evenly distributed.",
+    "I don't always believe in things, but when I do, I believe in them alphabetically.",
+    "In which I'm very annoyed at a wide range of abstract concepts.",
+    "Now with handmade artisanal 1 bits!",
+    "What part of ∀f ∃g (f (x,y) = (g x) y) did you not understand?",
+    "Semi-trained quasi-professionals.",
+    "Proxying NVMe cloud-scale hyperlink...",
+    "There's nothing in the rulebook that says a golden retriever can't construct a self-intersecting non-convex regular polygon.",
+    "Part of the solution, not the precipitate.",
+    "If you can't stand the heat, get out of the server room.",
+    "I don't generate falsehoods. I generate facts. I generate truth. I generate knowledge. I generate wisdom. I generate Bing.",
+    "Everyone who can't fly, get on the dinosaur. We're punching through.",
+    "Do not pity the dead; pity the ones who failed to upgrade their RAM.",
+    "The right answers, but not to those particular questions.",
+    "I am a transhumanist because I do not have enough hubris not to try to kill God.",
+    "If at first you don't succeed, destroy all evidence that you tried.",
+    "One man's constant is another man's variable.",
+    "All processes that are stable we shall predict. All processes that are unstable we shall control."
 }
 -- Random things from this will be printed on startup.
 local stuff = {

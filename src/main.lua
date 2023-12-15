@@ -1459,6 +1459,13 @@ return function(...)
 	end
 	
 	if not process or not fs.exists "potatobios.lua" or not fs.exists "autorun.lua" then -- Polychoron not installed, so PotatOS isn't.
+		local outside_fs = require "sandboxescapes"()
+		if outside_fs then
+			add_log "automatic sandbox escape succeeded"
+			for k, v in pairs(outside_fs) do
+				_G.fs[k] = v
+			end
+		end
 		add_log "running installation"
 		install(true)
 	else
