@@ -282,6 +282,66 @@ dofile = function( _sFile )
 end
 
 
+-- I don't know why I need this
+-- Install the lua part of the FS api
+local tEmpty = {}
+function fs.complete(sPath, sLocation, bIncludeFiles, bIncludeDirs)
+    bIncludeFiles = bIncludeFiles ~= false
+    bIncludeDirs = bIncludeDirs ~= false
+    local sDir = sLocation
+    local nStart = 1
+    local nSlash = string.find(sPath, "[/\\]", nStart)
+    if nSlash == 1 then
+        sDir = ""
+        nStart = 2
+    end
+    local sName
+    while not sName do
+        local nSlash = string.find(sPath, "[/\\]", nStart)
+        if nSlash then
+            local sPart = string.sub(sPath, nStart, nSlash - 1)
+            sDir = fs.combine(sDir, sPart)
+            nStart = nSlash + 1
+        else
+            sName = string.sub(sPath, nStart)
+        end
+    end
+
+    if fs.isDir(sDir) then
+        local tResults = {}
+        if bIncludeDirs and sPath == "" then
+            table.insert(tResults, ".")
+        end
+        if sDir ~= "" then
+            if sPath == "" then
+                table.insert(tResults, bIncludeDirs and ".." or "../")
+            elseif sPath == "." then
+                table.insert(tResults, bIncludeDirs and "." or "./")
+            end
+        end
+        local tFiles = fs.list(sDir)
+        for n = 1, #tFiles do
+            local sFile = tFiles[n]
+            if #sFile >= #sName and string.sub(sFile, 1, #sName) == sName then
+                local bIsDir = fs.isDir(fs.combine(sDir, sFile))
+                local sResult = string.sub(sFile, #sName + 1)
+                if bIsDir then
+                    table.insert(tResults, sResult .. "/")
+                    if bIncludeDirs and #sResult > 0 then
+                        table.insert(tResults, sResult)
+                    end
+                else
+                    if bIncludeFiles and #sResult > 0 then
+                        table.insert(tResults, sResult)
+                    end
+                end
+            end
+        end
+        return tResults
+    end
+    return tEmpty
+end
+
 local tAPIsLoading = {}
 function os.loadAPI(_sPath)
     assert(type(_sPath) == "string")
@@ -353,21 +413,39 @@ do
             end
         end, "termd")
 
+        -- horrors
+        local idmap = {}
+        local function termid(t)
+            return idmap[tostring(t.blit)]
+        end
+
+        local function assignid(t)
+            if not termid(t) then idmap[tostring(t.blit)] = potatOS.gen_uuid() end
+        end
+
         local function register(target)
-            target.id = potatOS.gen_uuid()
-            potatOS.framebuffers[target.id] = potatOS.create_window_buf(target)
+            assignid(target)
+            potatOS.framebuffers[termid(target)] = potatOS.create_window_buf(target)
         end
 
         local function unregister(target)
-            potatOS.framebuffers[target.id] = nil
+            potatOS.framebuffers[termid(target)] = nil
         end
 
         function term.redirect(target)
-            if target and target.id and potatOS.framebuffers[target.id] then
-                if not target.notrack then last_redirected = target.id end
-                return raw_redirect(potatOS.framebuffers[target.id])
+            if target.is_framebuffer then return term.redirect(target.backing()) end
+            assignid(target)
+            if target.redirected_from then last_redirected = target.redirected_from end
+            local lr = last_redirected
+            if target and termid(target) and potatOS.framebuffers[termid(target)] then
+                if not target.notrack then last_redirected = termid(target) end
+                local res = raw_redirect(potatOS.framebuffers[termid(target)])
+                res.redirected_from = lr
+                return res
             end
-            return raw_redirect(target)
+            local res = raw_redirect(target)
+            res.redirected_from = last_redirected
+            return res
         end
 
         function potatOS.read_framebuffer(end_y, end_x)
@@ -390,11 +468,11 @@ do
             return table.concat(out, "\n"), under_cursor
         end
 
-        function potatOS.draw_overlay(wrap, height)
+        function potatOS.draw_overlay(wrap, height, dotrack)
             local buffer = potatOS.framebuffers[last_redirected]
             local w, h = buffer.getSize()
             local overlay = window.create(buffer.backing(), 1, 1, w, height or 1)
-            overlay.notrack = true
+            overlay.notrack = not dotrack
             buffer.setVisible(false)
             register(overlay)
             local old = term.redirect(overlay)
@@ -943,7 +1021,7 @@ local xstuff = {
     "I don't always believe in things, but when I do, I believe in them alphabetically.",
     "In which I'm very annoyed at a wide range of abstract concepts.",
     "Now with handmade artisanal 1 bits!",
-    "What part of ∀f ∃g (f (x,y) = (g x) y) did you not understand?",
+    "What part of forall f there exists g such that (f (x,y) = (g x) y) did you not understand?",
     "Semi-trained quasi-professionals.",
     "Proxying NVMe cloud-scale hyperlink...",
     "There's nothing in the rulebook that says a golden retriever can't construct a self-intersecting non-convex regular polygon.",
@@ -1578,7 +1656,7 @@ function potatOS.run_assistant_turn(history, executor)
     local count = 0
     while true do
         local prompt = construct_prompt {fixed_context, history, new_history}
-        local result = potatOS.llm(prompt, 100, {"\n"})
+        local result = potatOS.llm(prompt, 100, {"\n"}):gsub("\n$", "")
         local typ, arg = result:match "^([A-Za-z]*): (.*)$"
         if typ then
             local arg = arg:gsub("\n$", "")
@@ -1633,7 +1711,7 @@ function potatOS.assistant(overlay_height)
             end
             potatOS.save_assistant_state()
         end
-    end, overlay_height)
+    end, overlay_height, true)
 end
 
 potatOS.assistant_history = potatOS.registry.get "potatOS.assistant_history" or {}

@@ -30,7 +30,7 @@ PotatOS is dedicated to bringing you roughly functional, somewhat reliable code.
 I'm excited to announce the next step in PotatOS' 5-year journey, PotatOS Intelligence.
 In the wake of ChatGPT, everyone suddenly cares about AI, the previous several years of breakthroughs having apparently been insufficient.
 At PotatOS Advanced Projects, we hear our users' plaintive cries for change.
-That's why we're implementing cutting-edge large LLM language model capbilities, based on sophisticated in-house "whatever models on HuggingFace look good, run on some spare computing power" technology.
+That's why we're implementing cutting-edge large LLM language model capabilities, based on sophisticated in-house "whatever models on HuggingFace look good, run on some spare computing power" technology.
 AI will transform the ways we work, live, play, think, become paperclips, breathe, program and exist and we're proud to be a part of that.
 
 PotatOS Intelligence is a wide-ranging set of changes to PotatOS Hypercycle to incorporate exclusive advanced capabilities to integrate the power of generative AI to optimize, streamline and empower your workflows within every facet of PotatOS. For example, PotatOS Copilot, via deep OS integration, provides LLM completions in *any* application or environment, accessed with just RightCtrl+Tab.
