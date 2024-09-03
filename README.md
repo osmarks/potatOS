@@ -93,6 +93,7 @@ Unlike most "OS"es for CC (primarily excluding Opus OS, which is actually useful
 - Live threat updates using our advanced algorithms.
 - PotatOS Epenthesis' rewritten security model fixes many exploits and adds others while reducing boot times.
 - IPC mechanism.
+- Virtual filesystems abstraction.
 
 ## Architecture
 
