@@ -220,10 +220,14 @@ local function create_FS(vfstree)
 		return last_usable_node, last_segs
 	end
 
-	local function resolve_path(sandbox_path)
-		local node, segs = resolve(sandbox_path)
+	local function resolve_node_segs(node, segs)
 		if node.mount then return fs, fscombine(node.mount, combine(segs)) end
 		return node.vfs, combine(segs)
+	end
+
+	local function resolve_path(sandbox_path)
+		local node, segs = resolve(sandbox_path)
+		return resolve_node_segs(node, segs)
 	end
 
 	local function lift_to_sandbox(f, n)
@@ -298,7 +302,25 @@ local function create_FS(vfstree)
 		end
 	end
 
-	add_to_table(new, map(lift_to_sandbox, copy_some_keys {"isDir", "getDrive", "getSize", "getFreeSpace", "makeDir", "delete", "isDriveRoot", "exists", "isReadOnly", "list", "attributes"} (fs)))
+	function new.list(path)
+		local node, segs = resolve(path)
+		local vfs, path = resolve_node_segs(node, segs)
+		if #segs > 0 then return vfs.list(path) end
+		local out = {}
+		local seen = {}
+		for k, v in pairs(node.children or {}) do
+			table.insert(out, k)
+			seen[k] = true
+		end
+		for _, v in pairs(vfs.list(path)) do
+			if not seen[v] then
+				table.insert(out, v)
+			end
+		end
+		return out
+	end
+
+	add_to_table(new, map(lift_to_sandbox, copy_some_keys {"isDir", "getDrive", "getSize", "getFreeSpace", "makeDir", "delete", "isDriveRoot", "exists", "isReadOnly", "attributes"} (fs)))
 
 	function new.find(wildcard)
 		local function recurse_spec(results, path, spec) -- From here: https://github.com/Sorroko/cclite/blob/62677542ed63bd4db212f83da1357cb953e82ce3/src/emulator/native_api.lua

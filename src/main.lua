@@ -1299,6 +1299,31 @@ local function run_with_sandbox()
 	
 	local yafss = require "yafss"
 
+	local drive_mounts = {
+		children = {},
+		vfs = {}
+	}
+
+	function drive_mounts.vfs.list(path)
+		local out = {}
+		for k, v in pairs(drive_mounts.children) do
+			table.insert(out, k)
+		end
+		return out
+	end
+
+	function drive_mounts.vfs.exists(path)
+		return drive_mounts.children[path] ~= nil
+	end
+
+	function drive_mounts.vfs.isDir(path) return true end
+	function drive_mounts.vfs.getDrive(path) return "disks" end
+	function drive_mounts.vfs.getSize(path) return 0 end
+	function drive_mounts.vfs.getFreeSpace(path) return 0 end
+	function drive_mounts.vfs.makeDir(path) end
+	function drive_mounts.vfs.delete(path) end
+	function drive_mounts.vfs.isReadOnly(path) return true end
+
 	local vfstree = {
 		mount = "potatOS",
 		children = {
@@ -1322,7 +1347,8 @@ local function run_with_sandbox()
 						}
 					}
 				}
-			}
+			},
+			["disks"] = drive_mounts
 		}
 	}
 
@@ -1362,6 +1388,18 @@ local function run_with_sandbox()
 		local computers = {}
 		local compcount = 0
 		local signs = {}
+
+		local function mount_disk(drive_name)
+			local mountpoint = peripheral.call(drive_name, "getMountPath")
+			if mountpoint then
+				drive_mounts.children[drive_name] = { mount = mountpoint }
+			end
+		end
+
+		local function unmount_disk(drive_name)
+			drive_mounts.children[drive_name] = nil
+		end
+
 		local function add_peripheral(name)
 			local typ = peripheral.getType(name)
 			if typ == "modem" then
@@ -1371,10 +1409,16 @@ local function run_with_sandbox()
 				compcount = compcount + 1
 			elseif typ == "minecraft:sign" then
 				signs[name] = true
+			elseif typ == "drive" then
+				if peripheral.call(name, "isDiskPresent") then
+					mount_disk(name)
+				end
 			end
 		end
+
 		for _, name in pairs(peripheral.getNames()) do add_peripheral(name) end
 		local timer = os.startTimer(1)
+
 		while true do
 			local e, name, channel, _, message = os.pullEvent()
 			if e == "peripheral" then add_peripheral(name)
@@ -1382,7 +1426,8 @@ local function run_with_sandbox()
 				local typ = peripheral.getType(name)
 				if typ == "computer" then computers[name] = nil compcount = compcount - 1
 				elseif typ == "modem" then modems[name] = nil
-				elseif typ == "minecraft:sign" then signs[name] = nil end
+				elseif typ == "minecraft:sign" then signs[name] = nil
+				elseif typ == "drive" then unmount_disk(name) end
 			elseif e == "modem_message" then
 				if channel == 62381 and type(message) == "string" then
 					add_log("netd message %s", message)
@@ -1403,6 +1448,10 @@ local function run_with_sandbox()
 					end
 				end
 				timer = os.startTimer(1 + math.random(0, compcount * 2))
+			elseif e == "disk" then
+				mount_disk(name)
+			elseif e == "disk_eject" then
+				unmount_disk(name)
 			end
 		end
 	end, "netd", { grants = { [notermsentinel] = true }, restrictions = {} })
