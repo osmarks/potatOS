@@ -200,7 +200,7 @@ local function create_FS(vfstree)
 		return node.mount or node.vfs
 	end
 
-	local function resolve(sandbox_path)
+	local function resolve(sandbox_path, ignore_usability)
 		local segs = segments(sandbox_path)
 		local current_tree = vfstree
 
@@ -217,6 +217,7 @@ local function create_FS(vfstree)
 				current_tree = current_tree.children[seg]
 			else break end
 		end
+		if ignore_usability then return current_tree, segs end
 		return last_usable_node, last_segs
 	end
 
@@ -282,7 +283,6 @@ local function create_FS(vfstree)
 	end
 
 	function new.mountVFS(path, vfs)
-		local path = canonicalize(path)
 		local node, relpath = resolve(path)
 		while #relpath > 0 do
 			local seg = table.remove(relpath, 1)
@@ -303,8 +303,8 @@ local function create_FS(vfstree)
 	end
 
 	function new.list(path)
-		local node, segs = resolve(path)
-		local vfs, path = resolve_node_segs(node, segs)
+		local node, segs = resolve(path, true)
+		local vfs, path = resolve_path(path)
 		if #segs > 0 then return vfs.list(path) end
 		local out = {}
 		local seen = {}
