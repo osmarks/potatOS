@@ -1297,25 +1297,34 @@ local function run_with_sandbox()
 		end or v
 	end
 	
-	-- Provide many, many useful or not useful programs to the potatOS shell.
-	local FS_overlay = {
-		["secret/.pkey"] = fproxy "signing-key.tbl",
-		["secret/log"] = function() return potatOS_proxy.get_log() end,
-		-- The API backing this no longer exists due to excessive server load.
-		-----["/rom/programs/dwarf.lua"] = "print(potatOS.dwarf())",
-		["/secret/processes"] = function()
-			return tostring(process.list())
-		end,
-		["/rom/heavlisp_lib/stdlib.hvl"] = fproxy "stdlib.hvl"
-	}
-	
-	for _, file in pairs(fs.list "bin") do
-		FS_overlay[fs.combine("rom/programs", file)] = fproxy(fs.combine("bin", file))
-	end
+	local yafss = require "yafss"
 
-	for _, file in pairs(fs.list "xlib") do
-		FS_overlay[fs.combine("rom/potato_xlib", file)] = fproxy(fs.combine("xlib", file))
-	end
+	local vfstree = {
+		mount = "potatOS",
+		children = {
+			["rom"] = {
+				mount = "rom",
+				children = {
+					["potatOS_xlib"] = { mount = "/xlib" },
+					programs = {
+						children = {
+							["potatOS"] = { mount = "/bin" }
+						}
+					},
+					["autorun"] = {
+						vfs = yafss.vfs_from_files {
+							["fix_path.lua"] = [[shell.setPath("/rom/programs/potatOS:"..shell.path())]],
+						}
+					},
+					["heavlisp_lib"] = {
+						vfs = yafss.vfs_from_files {
+							["stdlib.hvl"] = fproxy "stdlib.hvl"
+						}
+					}
+				}
+			}
+		}
+	}
 
 	local API_overrides = {
 		process = process,
@@ -1400,11 +1409,9 @@ local function run_with_sandbox()
 	
 	require "metatable_improvements"(potatOS_proxy.add_log, potatOS_proxy.report_incident)
 
-	local yafss = require "yafss"
-
 	local fss_sentinel = sandboxlib.create_sentinel "fs-sandbox"
 	local debug_sentinel = sandboxlib.create_sentinel "constrained-debug"
-	local sandbox_filesystem = yafss.create_FS("potatOS", FS_overlay)
+	local sandbox_filesystem = yafss.create_FS(vfstree)
 	_G.fs = sandboxlib.dispatch_if_restricted(fss_sentinel, _G.fs, sandbox_filesystem)
 	_G.debug = sandboxlib.allow_whitelisted(debug_sentinel, _G.debug, {
 		"traceback",

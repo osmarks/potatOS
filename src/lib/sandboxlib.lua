@@ -13,6 +13,11 @@ end
 
 function sandboxlib.dispatch_if_restricted(rkey, original, restricted)
     local out = {}
+    for k, v in pairs(restricted) do
+        if not original[k] then
+            out[k] = v
+        end
+    end
     for k, v in pairs(original) do
         out[k] = function(...)
             if processrestriction(rkey) then

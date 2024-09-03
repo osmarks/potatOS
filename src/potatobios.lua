@@ -573,7 +573,7 @@ local function boot_require(package)
       	return pkg
 	end
 	local npackage = package:gsub("%.", "/")
-	for _, search_path in next, {"/", "lib", "rom/modules/main", "rom/modules/turtle", "rom/modules/command", "rom/potato_xlib"} do
+	for _, search_path in next, {"/", "lib", "rom/modules/main", "rom/modules/turtle", "rom/modules/command", "rom/potatOS_xlib"} do
 		local path = try_paths(search_path, {npackage, npackage .. ".lua"})
 		if path then
 			local ok, res = pcall(dofile, path)
@@ -589,7 +589,7 @@ _G.require = boot_require
 _ENV.require = boot_require
 
 local libs = {}
-for _, f in pairs(fs.list "rom/potato_xlib") do
+for _, f in pairs(fs.list "rom/potatOS_xlib") do
     table.insert(libs, f)
 end
 table.sort(libs)
@@ -1759,7 +1759,7 @@ if potatOS.registry.get "potatOS.immutable_global_scope" then
 end
 
 process.spawn(keyboard_shortcuts, "kbsd")
-if http.websocket then process.spawn(skynet.listen, "skynetd") process.spawn(potatoNET, "systemd-potatod") end
+if skynet and http.websocket then process.spawn(skynet.listen, "skynetd") process.spawn(potatoNET, "systemd-potatod") end
 local autorun = potatOS.registry.get "potatOS.autorun"
 if type(autorun) == "string" then
     autorun = load(autorun)
@@ -1781,7 +1781,7 @@ local function run_shell()
     term.clear()
     term.setCursorPos(1, 1)
     potatOS.add_log "starting user shell"
-    os.run( {}, sShell )
+    os.run({}, sShell )
 end
 
 if potatOS.registry.get "potatOS.extended_monitoring" then process.spawn(excessive_monitoring, "extended_monitoring") end

@@ -77,31 +77,10 @@ local function add_to_table(t1, t2)
 	end
 end
 
+local fscombine, fsgetname, fsgetdir = fs.combine, fs.getName, fs.getDir
 -- Convert path to canonical form
 local function canonicalize(path)
-	return fs.combine(path, "")
-end
-
--- Checks whether a path is in a directory
-local function path_in(p, dir)
-	return starts_with(canonicalize(p), canonicalize(dir))
-end
-
-local function make_mappings(root)
-	return {
-		["/disk"] = "/disk",
-		["/rom"] = "/rom",
-		default = root
-	}
-end
-
-local function get_root(path, mappings)
-	for mapfrom, mapto in pairs(mappings) do
-		if path_in(path, mapfrom) then
-			return mapto, mapfrom
-		end
-	end
-	return mappings.default, "/"
+	return fscombine(path, "")
 end
 
 -- Escapes lua patterns in a string. Should not be needed, but lua is stupid so the only string.replace thing is gsub
@@ -114,19 +93,12 @@ local function strip(p, root)
 	return p:gsub("^" .. escape(canonicalize(root)), "")
 end
 
-local function resolve_path(path, mappings)
-	local root, to_strip = get_root(path, mappings)
-	local newpath = strip(fs.combine(root, path), to_strip)
-	if path_in(newpath, root) then return newpath end
-	return resolve_path(newpath, mappings)
-end
-
 local function segments(path)
 	local segs, rest = {}, canonicalize(path)
 	if rest == "" then return {} end -- otherwise we'd get "root" and ".." for some broken reason
 	repeat
-		table.insert(segs, 1, fs.getName(rest))
-		rest = fs.getDir(rest)
+		table.insert(segs, 1, fsgetname(rest))
+		rest = fsgetdir(rest)
 	until rest == ""
 	return segs
 end
@@ -134,7 +106,7 @@ end
 local function combine(segs)
     local out = ""
     for _, p in pairs(segs) do
-        out = fs.combine(out, p)
+        out = fscombine(out, p)
     end
     return out
 end
@@ -179,98 +151,154 @@ end
 
 local this_level_env = _G
 
--- Create a modified FS table which confines you to root and has some extra read-only pseudofiles.
-local function create_FS(root, overlay)
-	local fs = fs
-	local mappings = make_mappings(root)
-
-	local vfstree = {
-		mount = "potatOS",
-		children = {
-			["disk"] = { mount = "disk" },
-			["rom"] = { mount = "rom" },
-			--["virtual_test"] = { virtual = "bees" }
-		}
+-- make virtual filesystem from files (no nested directories for simplicity)
+local function vfs_from_files(files)
+	return {
+		list = function(path)
+			if path ~= "" then return {} end
+			local out = {}
+			for k, v in pairs(files) do
+				table.insert(out, k)
+			end
+			return out
+		end,
+		open = function(path, mode)
+			return make_handle(files[path])
+		end,
+		exists = function(path)
+			return files[path] ~= nil or path == ""
+		end,
+		isReadOnly = function(path)
+			return true
+		end,
+		isDir = function(path)
+			if path == "" then return true end
+			return false
+		end,
+		getDrive = function(_) return "memory" end,
+		getSize = function(path)
+			return #files[path]
+		end,
+		getFreeSpace = function() return 0 end,
+		makeDir = function() end,
+		delete = function() end,
+		move = function() end,
+		copy = function() end,
+		attributes = function(path)
+			return {
+				size = #files[path],
+				modification = os.epoch "utc"
+			}
+		end
 	}
+end
+
+local function create_FS(vfstree)
+	local fs = fs
+
+	local function is_usable_node(node)
+		return node.mount or node.vfs
+	end
 
 	local function resolve(sandbox_path)
 		local segs = segments(sandbox_path)
 		local current_tree = vfstree
+
+		local last_usable_node, last_segs = nil, nil
+
 		while true do
+			if is_usable_node(current_tree) then
+				last_usable_node = current_tree
+				last_segs = copy(segs)
+			end
 			local seg = segs[1]
-			if current_tree.children and current_tree.children[seg] then
+			if seg and current_tree.children and current_tree.children[seg] then
 				table.remove(segs, 1)
 				current_tree = current_tree.children[seg]
 			else break end
 		end
+		return last_usable_node, last_segs
 	end
 
-	local new_overlay = {}
-	for k, v in pairs(overlay) do
-		new_overlay[canonicalize(k)] = v
+	local function resolve_path(sandbox_path)
+		local node, segs = resolve(sandbox_path)
+		if node.mount then return fs, fscombine(node.mount, combine(segs)) end
+		return node.vfs, combine(segs)
 	end
 
 	local function lift_to_sandbox(f, n)
-		return function(...)
-			local args = map(function(x) return resolve_path(x, mappings) end, {...})
-			return f(table.unpack(args))
+		return function(path)
+			local vfs, path = resolve_path(path)
+			return vfs[n](path)
 		end
 	end
 
 	local new = copy_some_keys {"getDir", "getName", "combine", "complete"} (fs)
 
-	function new.isReadOnly(path)
-		return path_in_overlay(new_overlay, path) or starts_with(canonicalize(path), "rom")
-	end
-
 	function new.open(path, mode)
 		if (contains(mode, "w") or contains(mode, "a")) and new.isReadOnly(path) then
 			error "Access denied"
 		else
-			local overlay_data = path_in_overlay(new_overlay, path)
-			if overlay_data then
-				if type(overlay_data) == "function" then overlay_data = overlay_data(this_level_env) end
-				return make_handle(overlay_data), "YAFSS overlay" 
-			end
-			return fs.open(resolve_path(path, mappings), mode)
+			local vfs, path = resolve_path(path)
+			return vfs.open(path, mode)
 		end
 	end
 
-	function new.exists(path)
-		if path_in_overlay(new_overlay, path) ~= nil then return true end
-		return fs.exists(resolve_path(path, mappings))
-	end
-
-	function new.overlay()
-		return map(function(x)
-			if type(x) == "function" then return x(this_level_env)
-			else return x end
-		end, new_overlay)
-	end
-
-	function new.list(dir)
-		local sdir = canonicalize(resolve_path(dir, mappings))
-		local ocontents = {}
-		for opath in pairs(new_overlay) do
-			if fs.getDir(opath) == sdir then
-				table.insert(ocontents, fs.getName(opath))
-			end
-		end
-		local ok, contents = pcall(fs.list, sdir)
-		-- in case of error (nonexistent dir, probably) return overlay contents
-		-- very awful temporary hack until I can get a nicer treeized VFS done
-		if not ok then
-			if #ocontents > 0 then return ocontents end
-			error(contents)
+	function new.move(src, dest)
+		local src_vfs, src_path = resolve_path(src)
+		local dest_vfs, dest_path = resolve_path(dest)
+		if src_vfs == dest_vfs then
+			return src_vfs.move(src_path, dest_path)
 		else
-			for _, v in pairs(ocontents) do
-				table.insert(contents, v)
-			end
-			return contents
+			if src_vfs.isReadOnly(src_path) then error "Access denied" end
+			new.copy(src, dest)
+			src_vfs.delete(src_path)
 		end
 	end
 
-	add_to_table(new, map(lift_to_sandbox, copy_some_keys {"isDir", "getDrive", "getSize", "getFreeSpace", "makeDir", "move", "copy", "delete", "isDriveRoot"} (fs)))
+	function new.copy(src, dest)
+		local src_vfs, src_path = resolve_path(src)
+		local dest_vfs, dest_path = resolve_path(dest)
+		if src_vfs == dest_vfs then
+			return src_vfs.copy(src_path, dest_path)
+		else
+			if src_vfs.isDir(src_path) then
+				dest_vfs.makeDir(dest_path)
+				for _, f in pairs(src_vfs.list(src_path)) do
+					new.copy(fscombine(src, f), fscombine(dest, f))
+				end
+			else
+				local dest_fh = dest_vfs.open(dest_path, "wb")
+				local src_fh = src_vfs.open(src_path, "rb")
+				dest_fh.write(src_fh.readAll())
+				src_fh.close()
+				dest_fh.close()
+			end
+		end
+	end
+
+	function new.mountVFS(path, vfs)
+		local path = canonicalize(path)
+		local node, relpath = resolve(path)
+		while #relpath > 0 do
+			local seg = table.remove(relpath, 1)
+			if not node.children then node.children = {} end
+			if not node.children[seg] then node.children[seg] = {} end
+			node = node.children[seg]
+		end
+		node.vfs = vfs
+	end
+
+	function new.unmountVFS(path)
+		local node, relpath = resolve(path)
+		if #relpath == 0 then
+			node.vfs = nil
+		else
+			error "Not a mountpoint"
+		end
+	end
+
+	add_to_table(new, map(lift_to_sandbox, copy_some_keys {"isDir", "getDrive", "getSize", "getFreeSpace", "makeDir", "delete", "isDriveRoot", "exists", "isReadOnly", "list", "attributes"} (fs)))
 
 	function new.find(wildcard)
 		local function recurse_spec(results, path, spec) -- From here: https://github.com/Sorroko/cclite/blob/62677542ed63bd4db212f83da1357cb953e82ce3/src/emulator/native_api.lua
@@ -310,7 +338,7 @@ local function create_FS(root, overlay)
 				to_add.c = new.dump(path)
 				to_add.t = "d"
 			else
-				local fh = new.open(path, "r")
+				local fh = new.open(path, "rb")
 				to_add.c = fh.readAll()
 				fh.close()
 			end
@@ -327,7 +355,7 @@ local function create_FS(root, overlay)
 				new.makeDir(path)
 				new.load(f.c, path)
 			else
-				local fh = new.open(path, "w")
+				local fh = new.open(path, "wb")
 				fh.write(f.c)
 				fh.close()
 			end
@@ -465,4 +493,4 @@ local function run(API_overrides, init, logger)
 	end
 end
 
-return { run = run, create_FS = create_FS }
+return { run = run, create_FS = create_FS, vfs_from_files = vfs_from_files }
