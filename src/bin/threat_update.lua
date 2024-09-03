@@ -24,7 +24,7 @@ print()
 print(snd)
 print()
 if arg == "headless" then
-	ccemux.echo "ready"
+	if ccemux then ccemux.echo "ready" end
 	while true do coroutine.yield() end
 else
 	print "Press a key to continue..."

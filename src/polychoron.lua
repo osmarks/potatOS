@@ -459,13 +459,18 @@ local old_error = error
 local old_os_shutdown = os.shutdown
 local old_term_redirect = term.redirect
 local old_term_native = term.native
+local old_printError = printError
 function error() end
 function term.redirect() end
 function term.native() end
+function printError() end
 function os.shutdown()
 	error = old_error
 	_G.error = old_error
 	_ENV.error = old_error
+	printError = old_printError
+	_G.printError = old_printError
+	_ENV.printError = old_printError
 	term.native = old_term_native
 	term.redirect = old_term_redirect
 	os.shutdown = old_os_shutdown

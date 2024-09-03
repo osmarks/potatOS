@@ -391,6 +391,12 @@ do
         local native = term.native()
         local last_redirected
 
+        -- horrors
+        local idmap = {}
+        local function termid(t)
+            return idmap[tostring(t.blit)]
+        end
+
         local ix = 0
         process.spawn(function()
             while true do
@@ -408,16 +414,10 @@ do
                     ix = ix + 1
                     process.queue_in(process.get_running().parent, "term_resize", true)
                 elseif ev == "ipc" and arg2 == "redraw_native" then
-                    potatOS.framebuffers[native.id].redraw()
+                    potatOS.framebuffers[termid(native)].redraw()
                 end
             end
         end, "termd")
-
-        -- horrors
-        local idmap = {}
-        local function termid(t)
-            return idmap[tostring(t.blit)]
-        end
 
         local function assignid(t)
             if not termid(t) then idmap[tostring(t.blit)] = potatOS.gen_uuid() end
@@ -1245,7 +1245,8 @@ function potatOS.llm(prompt, max_tokens, stop_sequences)
     local res, err = http.post("https://gpt.osmarks.net/v1/completions", json.encode {
         prompt = prompt,
         max_tokens = max_tokens,
-        stop = stop_sequences
+        stop = stop_sequences,
+        client = "potatOS"
     }, {["content-type"]="application/json"}, true)
     if err then
         error("Server error: " .. err) -- is this right? I forgot.
@@ -1608,7 +1609,7 @@ function potatOS.threat_update()
         table.insert(out, description)
         table.insert(out, "")
     end
-    return (potatOS.llm(table.concat(out, "\n"), 100, {"\n\n"}):gsub("^\n", ""):gsub("\n$", ""))
+    return "current threat level is" .. (potatOS.llm(table.concat(out, "\n") .. "\ncurrent threat level is", 100, {"\n\n"}):gsub("^\n", ""):gsub("\n$", ""))
 end
 
 local fixed_context = {

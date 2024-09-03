@@ -405,30 +405,11 @@ local gf, sf = getfenv, setfenv
 -- a map of paths to either strings containing their contents or functions returning them
 -- and a table of extra APIs and partial overrides for existing APIs
 local function make_environment(API_overrides, current_process)
-	local env_host = string.format("YAFSS on %s", _HOST)
 	local environment = copy_some_keys(allowed_APIs)(_G)
-	-- if function is not from within the VM, return env from within sandbox
-	function environment.getfenv(arg)
-		local env
-		if type(arg) == "number" then return gf() end
-		if not env or type(env._HOST) ~= "string" or not env._HOST == env_host then
-			return gf()
-		else
-			return env
-		end
-	end
 
-	--[[
-Fix PS#AD2A532C
-Allowing `setfenv` to operate on any function meant that privileged code could in some cases be manipulated to leak information or operate undesirably. Due to this, we restrict it, similarly to getfenv.
-	]]
-	function environment.setfenv(fn, env)
-		local nenv = gf(fn)
-		if not nenv or type(nenv._HOST) ~= "string" or not nenv._HOST == env_host then
-			return false
-		end
-		return sf(fn, env)
-	end
+	-- I sure hope this doesn't readd the security issues!
+	environment.getfenv = getfenv
+	environment.setfenv = setfenv
 
 	local load = load
 	function environment.load(code, file, mode, env)
@@ -437,7 +418,6 @@ Allowing `setfenv` to operate on any function meant that privileged code could i
 
 	environment._G = environment
 	environment._ENV = environment
-	environment._HOST = env_host
 
 	function environment.os.shutdown()
 		process.IPC(current_process, "power_state", "shutdown")
