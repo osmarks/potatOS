@@ -11,21 +11,6 @@ local function copy(tabl)
 	return new
 end
 
--- Deep-map all values in a table
-local function deepmap(table, f, path)
-	local path = path or ""
-	local new = {}
-	for k, v in pairs(table) do
-		local thisp = path .. "." .. k
-		if type(v) == "table" and v ~= table then -- bodge it to not stackoverflow
-			new[k] = deepmap(v, f, thisp)
-		else
-			new[k] = f(v, k, thisp)
-		end
-	end
-	return new
-end
-
 -- Takes a list of keys to copy, returns a function which takes a table and copies the given keys to a new table
 local function copy_some_keys(keys)
     return function(from)
@@ -41,13 +26,6 @@ local function copy_some_keys(keys)
     end
 end
 
--- Simple string operations
-local function starts_with(s, with)
-    return string.sub(s, 1, #with) == with
-end
-local function ends_with(s, with)
-    return string.sub(s, -#with, -1) == with
-end
 local function contains(s, subs)
 	return string.find(s, subs) ~= nil
 end
@@ -83,16 +61,6 @@ local function canonicalize(path)
 	return fscombine(path, "")
 end
 
--- Escapes lua patterns in a string. Should not be needed, but lua is stupid so the only string.replace thing is gsub
-local quotepattern = '(['..("%^$().[]*+-?"):gsub("(.)", "%%%1")..'])'
-local function escape(str)
-    return str:gsub(quotepattern, "%%%1")
-end
-
-local function strip(p, root)
-	return p:gsub("^" .. escape(canonicalize(root)), "")
-end
-
 local function segments(path)
 	local segs, rest = {}, canonicalize(path)
 	if rest == "" then return {} end -- otherwise we'd get "root" and ".." for some broken reason
@@ -110,14 +78,14 @@ local function combine(segs)
     end
     return out
 end
- 
--- Fetch the contents of URL "u"
-local function fetch(u)
-    local h = http.get(u)
-    local c = h.readAll()
-    h.close()
-    return c
-end
+
+local vfs_defaults = {}
+
+function vfs_defaults.getSize(path) return 0 end
+function vfs_defaults.getFreeSpace(path) return 0 end
+function vfs_defaults.makeDir(path) error "Access denied" end
+function vfs_defaults.delete(path) error "Access denied" end
+function vfs_defaults.isReadOnly(path) return true end
 
 -- Make a read handle for a string
 -- PS#8FE487EF: Incompletely implemented handle behaviour lead to strange bugs on recent CC
@@ -143,13 +111,6 @@ local function make_handle(text)
 	function h.readAll() local seg = text:sub(cursor) cursor = text:len() return seg:len() ~= 0 and seg or nil end
 	return h
 end
-
--- Get a path from a filesystem overlay
-local function path_in_overlay(overlay, path)
-	return overlay[canonicalize(path)]
-end
-
-local this_level_env = _G
 
 -- make virtual filesystem from files (no nested directories for simplicity)
 local function vfs_from_files(files)
@@ -234,7 +195,7 @@ local function create_FS(vfstree)
 	local function lift_to_sandbox(f, n)
 		return function(path)
 			local vfs, path = resolve_path(path)
-			return vfs[n](path)
+			return (vfs[n] or vfs_defaults[n])(path)
 		end
 	end
 
@@ -384,6 +345,9 @@ local function create_FS(vfstree)
 		end
 	end
 
+	new.segment = segments
+	new._make_handle = make_handle
+
 	return new
 end
 
@@ -458,8 +422,8 @@ local function make_environment(API_overrides, current_process)
 	local environment = copy_some_keys(allowed_APIs)(_G)
 
 	-- I sure hope this doesn't readd the security issues!
-	environment.getfenv = getfenv
-	environment.setfenv = setfenv
+	environment.getfenv = gf
+	environment.setfenv = sf
 
 	local load = load
 	function environment.load(code, file, mode, env)

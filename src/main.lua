@@ -1313,16 +1313,11 @@ local function run_with_sandbox()
 	end
 
 	function drive_mounts.vfs.exists(path)
-		return drive_mounts.children[path] ~= nil
+		return path == "" or drive_mounts.children[path] ~= nil
 	end
 
 	function drive_mounts.vfs.isDir(path) return true end
 	function drive_mounts.vfs.getDrive(path) return "disks" end
-	function drive_mounts.vfs.getSize(path) return 0 end
-	function drive_mounts.vfs.getFreeSpace(path) return 0 end
-	function drive_mounts.vfs.makeDir(path) end
-	function drive_mounts.vfs.delete(path) end
-	function drive_mounts.vfs.isReadOnly(path) return true end
 
 	local vfstree = {
 		mount = "potatOS",

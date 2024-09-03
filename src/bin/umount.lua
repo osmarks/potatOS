@@ -1,0 +1,1 @@
+fs.unmountVFS(shell.resolve(...))
