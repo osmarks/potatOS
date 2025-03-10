@@ -47,8 +47,7 @@ local registry = require "registry"
 
 --[[
 Server Policy Framework
-On 12/01/2020 CE (this is probably overprecise and I doubt anyone will care, yes), there was a weird incident on SwitchCraft involving some turtles somehow getting potatOS installed (seriously, "somehow" is accurate, I have no idea what caused this and attempted to uninstall it when someone actually pinged me; I think it involved a turtle getting set to ID 0 somehow, who knows how potatOS got onto ID 0 in the first place). In light of this (and it apparently breaking rule 9, despite this not having any involvement from me except for me remotely uninstalling it), SC's admins have demanded some features be disabled (EZCopy).
-Since I don't really want to hardcode random SwitchCraft APIs deep in the code somewhere (it's worrying that they *have* specific ones, as it seems like some programs are being written specifically against them now - seems kind of EEE), and other people will inevitably demand their own special cases, I'm making what should be a reasonably generic way to handle this.
+On 12/01/2020 CE (this is probably overprecise and I doubt anyone will care, yes), the ID 0 bug resulted in potatOS improving a large quantity of turtles, apparently causing problems. In light of this, SC's admins have demanded some features be disabled (EZCopy). This is a reasonably generic way to handle server-specific special cases.
 ]]
 
 local SPF = {
@@ -1457,7 +1456,7 @@ local function run_with_sandbox()
 	local debug_sentinel = sandboxlib.create_sentinel "constrained-debug"
 	local sandbox_filesystem = yafss.create_FS(vfstree)
 	_G.fs = sandboxlib.dispatch_if_restricted(fss_sentinel, _G.fs, sandbox_filesystem)
-	_G.debug = sandboxlib.allow_whitelisted(debug_sentinel, _G.debug, {
+	_G.debug = sandboxlib.allow_whitelisted(debug_sentinel, _G.debug or {}, {
 		"traceback",
 		"getinfo",
 		"getregistry"

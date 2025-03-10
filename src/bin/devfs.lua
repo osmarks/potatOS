@@ -33,23 +33,25 @@ function vfs.list(path)
         end
         return out
     elseif #segs == 2 then
-        
+
     end
 end
 
 local function write_handle(callback)
     local buffer = ""
-    local write_handle = {}
-    function write_handle.write(text)
+    local r_write_handle = {}
+    function r_write_handle.write(text)
         buffer = buffer .. text
     end
-    function write_handle.close()
+    function r_write_handle.close()
         callback(buffer)
     end
-    function write_handle.flush() end
-    function write_handle.writeLine(text) write_handle.write(text) write_handle.write("\n") end
-    return write_handle
+    function r_write_handle.flush() end
+    function r_write_handle.writeLine(text) r_write_handle.write(text) r_write_handle.write("\n") end
+    return r_write_handle
 end
+
+local call_results = {}
 
 function vfs.open(path, mode)
     local segs = fs.segment(path)
@@ -58,7 +60,7 @@ function vfs.open(path, mode)
             return write_handle(function(buffer)
                 local ok, res
                 for _, s in pairs(setters) do
-                    local ok2, res2 = pcall(peripheral.call, segs[1], s .. segs[2], json.decode(buffer))
+                    local ok2, res2 = pcall(peripheral.call, segs[1], s .. segs[2], textutils.unserialise(buffer))
                     ok = ok or ok2
                     res = res or res2
                 end
@@ -71,15 +73,24 @@ function vfs.open(path, mode)
                 local ok, res = pcall(peripheral.call, segs[1], g .. segs[2])
                 result = result or (ok and res)
             end
-            local text = json.encode(result)
+            local text = textutils.serialise(result)
             return fs._make_handle(text)
         end
     elseif #segs == 2 then
-        if mode:match "w" then
+        if mode:match "^w" then
             return write_handle(function(buffer)
-                peripheral.call(segs[1], segs[2], json.decode(buffer))
+                call_results[fs.combine(path, "")] = peripheral.call(segs[1], segs[2], unpack(textutils.unserialise(buffer)))
             end)
         end
+        if mode:match "^r" then
+            local rp = fs.combine(path, "")
+            local h
+            if call_results[rp] then h = fs._make_handle(textutils.serialise(call_results[rp]))
+            else h = fs._make_handle("") end
+            call_results[rp] = nil
+            return h
+        end
+        error "invalid IO mode"
     end
 end
 

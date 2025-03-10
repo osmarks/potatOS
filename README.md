@@ -17,6 +17,8 @@ Thanks to technology, we're able to offer a live PotatOS instance in your browse
 <button id="launch-demo">Experience PotatOS</button>
 <div id="computer"></div>
 
+(if the emulator gets stuck, please refresh this page)
+
 <noscript>
     Experiencing PotatOS requires JavaScript. Please enable it.
 </noscript>
@@ -72,7 +74,7 @@ Unlike most "OS"es for CC (primarily excluding Opus OS, which is actually useful
 - To ease large-scale network management, PotatOS's networking daemon turns on any networked potatOS computers.
 - Improves connected signs, if Plethora Peripherals is installed.
 - Recycle bin capability stops accidental loss of files.
-- `exorcise` command, which is like delete but better.
+- `exorcise` command, which is like `delete` but better.
 - Support for a wide variety of Lorem Ipsum integrated into the OS.
 - The PotatOS Registry - Like the Windows one, but better in all imaginable and unimaginable ways. Edit and view its contents with the `est` command.
 - Window manager shipped. I forgot what it is and how to use it.
