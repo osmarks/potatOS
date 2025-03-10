@@ -1,6 +1,6 @@
 -- thanks to valued user 6_4 for the suggestion
 
-local function different_to_global(candidate_fs)
+local function different_from_global(candidate_fs)
     local seen = {}
     for _, i in pairs(fs.list "") do
         seen[i] = true
@@ -19,7 +19,7 @@ local function is_probably_filesystem(x)
     for _, k in pairs(keys) do
         if type(x[k]) ~= "function" then return false end
     end
-    return different_to_global(x)
+    return different_from_global(x)
 end
 
 local function harvest_upvalues(fn)
@@ -110,7 +110,7 @@ local escapes = {
             i = i + 1
         end
     end,
-    scan_most_threads = function()  
+    scan_most_threads = function()
         if not debug then return end
         if not (debug.getinfo and debug.getlocal) then return end
         local running = coroutine.running()
