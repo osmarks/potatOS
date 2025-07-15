@@ -35,9 +35,9 @@ end
 term.setCursorBlink(false)
 print "Loading..."
 
-if settings.get "potatOS.rph_mode" == true then 
+if settings.get "potatOS.rph_mode" == true then
 	print "PotatOS Rph Compliance Mode: Enabled."
-	return false 
+	return false
 end
 
 require "stack_trace"
@@ -97,7 +97,7 @@ local function rot13(s)
 		end
 	end
 	return table.concat(out)
-end				
+end
 
 local debugtraceback = debug and debug.traceback
 local logfile = fs.open("latest.log", "a")
@@ -254,7 +254,7 @@ local function clear_space(reqd)
 		if fs.getFreeSpace "/" > (reqd + 4096) then
 			return
 		end
-		
+
 		for _, file in pairs(fs.find(i)) do
 			print("Deleting", file)
 			fs.delete(file)
@@ -306,7 +306,7 @@ local function fread(n)
 			out = {string.char(out)}
 			while true do
 				local next = f.read()
-				if not next then 
+				if not next then
 					out = table.concat(out)
 					break
 				end
@@ -451,16 +451,16 @@ function _G.report_incident(incident, flags, options)
 		for k, v in pairs(options.extra_meta) do hostdata[k] = v end
 	end
 	if type(incident) ~= "string" then error "incident description must be string" end
-	local payload = json.encode { 
-		report = incident, 
-		host = hostdata, 
-		code = options.code or last_loaded, 
+	local payload = json.encode {
+		report = incident,
+		host = hostdata,
+		code = options.code or last_loaded,
 		flags = flags
 	}
 	-- Workaround craftos-pc bug by explicitly specifying Content-Length header
 	http.request {
-		url = "https://spudnet.osmarks.net/report", 
-		body = payload, 
+		url = "https://spudnet.osmarks.net/report",
+		body = payload,
 		headers = {
 			["content-type"] = "application/json",
 			-- Workaround for CraftOS-PC bug where it apparently sends 0, which causes problems in the backend
@@ -470,7 +470,7 @@ function _G.report_incident(incident, flags, options)
 	}
 	add_log("reported an incident %s", incident)
 end
-		
+
 local disk_code_template = [[
 settings.set("potatOS.gen_count", %d)
 settings.set("potatOS.ancestry", %s)
@@ -492,7 +492,7 @@ local function generate_disk_code()
 		("wget %q startup"):format((registry.get "potatOS.current_manifest.base_URL" or manifest:gsub("/manifest$", "")) .. "/autorun.lua")
 	)
 end
-			
+
 -- Upgrade other disks to contain potatOS and/or load debug programs (mostly the "OmniDisk") off them.
 local function process_disk(disk_side)
 	local mp = disk.getMountPath(disk_side)
@@ -502,8 +502,8 @@ local function process_disk(disk_side)
 	local sig_file = fs.combine(mp, "signature")
 	-- shell.run disks marked with the Brand of PotatOS
 	-- except not actually, it's cool and uses load now
-	
-	if fs.exists(ds) and fs.exists(sig_file) then 
+
+	if fs.exists(ds) and fs.exists(sig_file) then
 		local code = fread(ds)
 		local sig_raw = fread(sig_file)
 		local sig
@@ -537,10 +537,10 @@ local function process_disk(disk_side)
 		else
 			printError "Invalid Signature!"
 			printError "Initiating Procedure 5."
-			report_incident("invalid signature on disk", 
+			report_incident("invalid signature on disk",
 			{"security", "disk_signature"},
 			{
-				code = code, 
+				code = code,
 				extra_meta = { signature = sig_raw, disk_ID = disk_ID, disk_side = disk_side, mount_path = mp }
 			})
 			printError "This incident has been reported."
@@ -561,12 +561,12 @@ local function disk_handler()
 	-- Detect disks initially
 	for _, n in pairs(peripheral.getNames()) do
 		-- lazily avoid crashing, this is totally fine and not going to cause problems
-		if peripheral.getType(n) == "drive" then 
+		if peripheral.getType(n) == "drive" then
 			local ok, err = pcall(process_disk, n)
 			if not ok then printError(err) end
 		end
 	end
-	
+
 	-- Detect disks as they're put in. Mwahahahaha.
 	-- Please note that this is for definitely non-evil purposes only.
 	while true do
@@ -575,7 +575,7 @@ local function disk_handler()
 		if not ok then printError(err) end
 	end
 end
-			
+
 --[[
 Fix bug PS#201CA2AA
 Serializing functions, recursive tables, etc. - this is done fairly often - can cause a complete crash of the SPUDNET process. This fixes that.
@@ -644,9 +644,10 @@ local function websocket_remote_debugging()
 
 	local function connect()
 		if ws then ws.close() end
-		ws, err = http.websocket "wss://spudnet.osmarks.net/v4?enc=json"
+		local url = "wss://spudnet.osmarks.net/v4?enc=json&rand=" .. math.random(0, 0xFFFFFFF)
+		ws, err = http.websocket(url)
 		if not ws then add_log("websocket failure %s", err) return false end
-		ws.url = "wss://spudnet.osmarks.net/v4?enc=json"
+		ws.url = url
 
 		send_packet { type = "identify", request_ip = true, implementation = string.format("PotatOS %s on %s", (settings.get "potatOS.current_hash" or "???"):sub(1, 8), _HOST) }
 		send_packet { type = "set_channels", channels = { "client:potatOS" } }
@@ -655,13 +656,13 @@ local function websocket_remote_debugging()
 
 		return true
 	end
-	
+
 	local function try_connect_loop()
 		while not connect() do
 			sleep(0.5)
 		end
 	end
-	
+
 	try_connect_loop()
 
 	local function recv()
@@ -670,7 +671,7 @@ local function websocket_remote_debugging()
 			if u == ws.url then return json.decode(x) end
 		end
 	end
-	
+
 	local ping_timeout_timer = nil
 
 	process.thread(function()
@@ -683,7 +684,7 @@ local function websocket_remote_debugging()
 			end
 		end
 	end, "ping-timeout")
-	
+
 	while true do
 		-- Receive and run code which is sent via SPUDNET
 		-- Also handle SPUDNETv4 protocol, primarily pings
@@ -768,7 +769,7 @@ _G.require = simple_require
 function _G.uninstall(cause)
 	-- 	this is pointless why is this in the code
 	--	add_log("uninstalling %s", cause)
-	if not cause then 
+	if not cause then
 		report_incident("uninstall without specified cause", {"security", "uninstall_no_cause", "uninstall"})
 		error "uninstall cause required"
 	end
@@ -839,7 +840,7 @@ local function download_files(manifest_data, needed_files)
 			local x = h.readAll()
 			h.close()
 			local hexsha = hexize(sha256(x))
-			if (manifest_data.sizes and manifest_data.sizes[file] and manifest_data.sizes[file] ~= #x) or manifest_data.files[file] ~= hexsha then 
+			if (manifest_data.sizes and manifest_data.sizes[file] and manifest_data.sizes[file] ~= #x) or manifest_data.files[file] ~= hexsha then
 				error(("hash mismatch on %s %s (expected %s, got %s)"):format(file, url, manifest_data.files[file], hexsha))
 			end
 			fwrite(file, x)
@@ -883,7 +884,7 @@ local function process_manifest(url, force, especially_force)
 	local main_data = txt:match "^(.*)\n"
 	local metadata = json.decode(txt:match "\n(.*)$")
 	local main_data_hash = hexize(sha256(main_data))
-	
+
 
 	if main_data_hash ~= metadata.hash then
 		error(("hash mismatch: %s %s"):format(main_data_hash, metadata.hash))
@@ -920,8 +921,8 @@ local function process_manifest(url, force, especially_force)
 	for file, hash in pairs(data.files) do
 		if fs.isDir(file) then fs.delete(file) end
 		if not fs.exists(file) then print("missing", file) add_log("nonexistent %s", file) table.insert(needs, file)
-		elseif (data.sizes and data.sizes[file] and data.sizes[file] ~= fs.getSize(file)) 
-			or (has_manifest and ((current_manifest.files[file] and current_manifest.files[file] ~= hash) or not current_manifest.files[file])) 
+		elseif (data.sizes and data.sizes[file] and data.sizes[file] ~= fs.getSize(file))
+			or (has_manifest and ((current_manifest.files[file] and current_manifest.files[file] ~= hash) or not current_manifest.files[file]))
 			or (not has_manifest and hexize(sha256(fread(file))) ~= hash) then
 			add_log("mismatch %s %s", file, hash)
 			print("mismatch on", file, hash)
@@ -961,7 +962,7 @@ local function install(force)
 			fs.makeDir(d)
 		end
 	end
-	
+
 	local res = process_manifest(manifest, force)
 	if (res == 0 or res == false) and not force then
 		uncapture_screen()
@@ -971,27 +972,27 @@ local function install(force)
 	-- Stop people using disks. Honestly, did they expect THAT to work?
 	set("shell.allow_disk_startup", false)
 	set("shell.allow_startup", true)
-	
+
 	--if fs.exists "startup.lua" and fs.isDir "startup.lua" then fs.delete "startup.lua" end
 	--fwrite("startup.lua", (" "):rep(100)..[[shell.run"pastebin run RM13UGFa"]])
-	
+
 	-- I mean, the label limit is MEANT to be 32 chars, but who knows, buggy emulators ~~might~~ did let this work...
 	if not os.getComputerLabel() or not (os.getComputerLabel():match "^P/") then
 		os.setComputerLabel("P/" .. randbytes(64))
 	end
-	
+
 	if not settings.get "potatOS.uuid" then
 		set("potatOS.uuid", gen_uuid())
 	end
 	if not settings.get "potatOS.ts" then
 		set("potatOS.ts", os.epoch "utc")
 	end
-	
+
 	add_log("update complete", tostring(res) or "[some weirdness]")
 
 	os.reboot()
 end
-			
+
 local function critical_error(err)
 	term.clear()
 	term.setCursorPos(1, 1)
@@ -1017,7 +1018,7 @@ end
 local function run_with_sandbox()
 	-- Load a bunch of necessary PotatoLibraries™
 	--	if fs.exists "lib/bigfont" then os.loadAPI "lib/bigfont" end
-	if fs.exists "lib/gps.lua" then 
+	if fs.exists "lib/gps.lua" then
 		os.loadAPI "lib/gps.lua"
 	end
 
@@ -1117,19 +1118,19 @@ local function run_with_sandbox()
 	-- Hook up the debug registry to the potatOS Registry.
 	debug_registry_mt.__index = function(_, k) return registry.get(k) end
 	debug_registry_mt.__newindex = function(_, k, v) return registry.set(k, v) end
-	
+
 	local function fproxy(file)
 		local ok, t = pcall(fread, file)
 		if not ok or not t then return 'printError "Error. Try again later, or reboot, or run upd."' end
 		return t
 	end
-	
+
 	local uuid = settings.get "potatOS.uuid"
 	-- Generate a build number from the first bit of the verhash
 	local full_build = settings.get "potatOS.current_hash"
 	_G.build_number = full_build:sub(1, 8)
 	add_log("build number is %s, uuid is %s", _G.build_number, uuid)
-	
+
 	local is_uninstalling = false
 	-- PotatOS API functionality
 
@@ -1187,7 +1188,7 @@ local function run_with_sandbox()
 				return new
 			end
 		end,
-		-- Updates potatOS 
+		-- Updates potatOS
 		update = function()
 			process.IPC("potatoupd", "trigger_update", true)
 		end,
@@ -1280,7 +1281,7 @@ local function run_with_sandbox()
 			end
 		end
 	end, "privapi")
-	
+
 	local potatOS_proxy = {}
 	for k, v in pairs(potatOS) do
 		potatOS_proxy[k] = (type(v) == "function" and not pure_functions[k]) and function(...)
@@ -1295,7 +1296,7 @@ local function run_with_sandbox()
 			end
 		end or v
 	end
-	
+
 	local yafss = require "yafss"
 
 	local drive_mounts = {
@@ -1358,14 +1359,14 @@ local function run_with_sandbox()
 		_VERSION = _VERSION,
 		potatOS = potatOS_proxy
 	}
-	
+
 	--[[
 	Fix bug PS#22B7A59D
 	Unify constantly-running peripheral manipulation code under one more efficient function, to reduce server load.
 	See the code for the "onsys" process just below for the new version.~~
 	UPDATE: This is now in netd, formerly lancmd, anyway
 	]]
-	
+
 	-- Allow limited remote commands over wired LAN networks for improved potatOS cluster management
 	-- PS#C9BA58B3
 	-- Reduce peripheral calls by moving LAN sign/computer handling into this kind of logic, which is more efficient as it does not constantly run getType/getNames.
@@ -1449,8 +1450,8 @@ local function run_with_sandbox()
 			end
 		end
 	end, "netd", { grants = { [notermsentinel] = true }, restrictions = {} })
-	
-	require "metatable_improvements"(potatOS_proxy.add_log, potatOS_proxy.report_incident)
+
+	pcall(require "metatable_improvements", potatOS_proxy.add_log, potatOS_proxy.report_incident)
 
 	local fss_sentinel = sandboxlib.create_sentinel "fs-sandbox"
 	local debug_sentinel = sandboxlib.create_sentinel "constrained-debug"
@@ -1477,17 +1478,17 @@ local function run_with_sandbox()
 	) end, "sandbox", { restrictions = { [fss_sentinel] = true, [debug_sentinel] = true, [defeature_sentinel] = true } })
 	add_log "sandbox started"
 end
-				
+
 return function(...)
 	local command = table.concat({...}, " ")
 	add_log("command line is %q", command)
-	
+
 	-- Removes whitespace. I don't actually know what uses this either.
 	local function strip_whitespace(text)
 		local newtext = text:gsub("[\r\n ]", "")
 		return newtext
 	end
-	
+
 	-- Detect a few important command-line options.
 	if command:find "rphmode" then set("potatOS.rph_mode", true) end
 	if command:find "mode2" then set("potatOS.hidden", true) end
@@ -1500,14 +1501,14 @@ return function(...)
 	end
 	if command:find "update" or command:find "install" then install(true) end
 	if command:find "hedgehog" and command:find "76fde5717a89e332513d4f1e5b36f6cb" then set("potatOS.removable", true) os.reboot() end
-	
+
 	-- enable debug, HTTP if in CraftOS-PC
 	if _G.config and _G.config.get then
 		if config.get "http_enable" ~= true then pcall(config.set, "http_enable", true) end
 		if config.get "debug_enable" ~= true then pcall(config.set, "debug_enable", true) end
 		if config.get "romReadOnly" ~= false then pcall(config.set, "romReadOnly", false) end -- TODO: do something COOL with this.
 	end
-	
+
 	if not process or not fs.exists "potatobios.lua" or not fs.exists "autorun.lua" then -- Polychoron not installed, so PotatOS isn't.
 		local outside_fs = require "sandboxescapes"()
 		if outside_fs then
@@ -1525,7 +1526,7 @@ return function(...)
 				-- do updates here
 				local ok, err = pcall(install, false)
 				if not ok then add_log("update error %s", err) end
-				
+
 				-- Spread out updates a bit to reduce load on the server.
 				local timer = os.startTimer(300 + (os.getComputerID() % 100) - 50)
 				while true do
@@ -1538,13 +1539,13 @@ return function(...)
 				end
 			end
 		end, "potatoupd")
-		
+
 		-- In case it breaks horribly, display nice messages.
 		local ok, err = pcall(run_with_sandbox)
 		if not ok then
 			critical_error(err)
 		end
-		
+
 		-- In case it crashes... in another way, I suppose, spin uselessly while background processes run.
 		while true do coroutine.yield() end
 	end

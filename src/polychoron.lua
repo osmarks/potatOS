@@ -24,13 +24,14 @@ if ccemux then
 	ccemuxnanoTime = ccemux.nanoTime
 	ccemuxecho = ccemux.echo
 end
+local outer_process = _G.process
 
 -- Return a time of some sort. Not used to provide "objective" time measurement, just for duration comparison
 local function time()
 	if ccemuxnanoTime then
 		return ccemuxnanoTime() / 1e9
-	elseif osepoch then 
-		return osepoch "utc" / 1000 else 
+	elseif osepoch then
+		return osepoch "utc" / 1000 else
 	return osclock() end
 end
 
@@ -158,7 +159,7 @@ local function BSOD(e)
 	term.clear()
 	term.setCursorBlink(false)
 	term.setCursorPos(1, 1)
-	
+
 	print(e)
 	end
 end
@@ -433,8 +434,9 @@ local function run_loop()
 	end
 end
 
-local function boot()
-	if ccemuxecho then ccemuxecho("TLCO executed " .. (debugtraceback and debugtraceback() or "succesfully")) end
+local function boot(desc)
+    if ccemuxecho then ccemuxecho(desc .. " executed " .. (debugtraceback and debugtraceback() or "succesfully")) end
+
 	term.redirect(term.native())
 	multishell = nil
 	term.setTextColor(colors.yellow)
@@ -443,6 +445,7 @@ local function boot()
 	term.clear()
 
 	process.spawn(function() os.run({}, "autorun.lua") end, "main", { grants = { [root_capability] = true }, restrictions = {} })
+
 	process.spawn(function()
 		-- bodge, because of the rednet bRunning thing
 		local old_error = error
@@ -454,28 +457,35 @@ local function boot()
 	run_loop()
 end
 
--- fixed TLCO from https://gist.github.com/MCJack123/42bc69d3757226c966da752df80437dc
-local old_error = error
-local old_os_shutdown = os.shutdown
-local old_term_redirect = term.redirect
-local old_term_native = term.native
-local old_printError = printError
-function error() end
-function term.redirect() end
-function term.native() end
-function printError() end
-function os.shutdown()
-	error = old_error
-	_G.error = old_error
-	_ENV.error = old_error
-	printError = old_printError
-	_G.printError = old_printError
-	_ENV.printError = old_printError
-	term.native = old_term_native
-	term.redirect = old_term_redirect
-	os.shutdown = old_os_shutdown
-	os.pullEventRaw = coroutine.yield
-	boot()
-end
+-- fix nested potatOSes
+if outer_process then
+    -- cannot TLCO; run under outer process manager
+    outer_process.spawn(function() boot "nested boot" end, "polychoron")
+    while true do coroutine.yield() end
+else
+    -- fixed TLCO from https://gist.github.com/MCJack123/42bc69d3757226c966da752df80437dc
+    local old_error = error
+    local old_os_shutdown = os.shutdown
+    local old_term_redirect = term.redirect
+    local old_term_native = term.native
+    local old_printError = printError
+    function error() end
+    function term.redirect() end
+    function term.native() end
+    function printError() end
+    function os.shutdown()
+       	error = old_error
+       	_G.error = old_error
+       	_ENV.error = old_error
+       	printError = old_printError
+       	_G.printError = old_printError
+       	_ENV.printError = old_printError
+       	term.native = old_term_native
+       	term.redirect = old_term_redirect
+       	os.shutdown = old_os_shutdown
+       	os.pullEventRaw = coroutine.yield
+       	boot "TLCO"
+    end
 
-os.pullEventRaw = nil
+    os.pullEventRaw = nil
+end
