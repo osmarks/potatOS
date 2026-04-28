@@ -1,5 +1,5 @@
-local arg = ...
-local update = potatOS.threat_update():gsub("\n$", "")
+local arg = table.concat({...}, "")
+local update = potatOS.threat_update(arg:match("positive") and true or false):gsub("\n$", "")
 local bg = term.getBackgroundColor()
 local fg = term.getTextColor()
 term.setBackgroundColor(colors.black)
@@ -23,7 +23,7 @@ print(fst)
 print()
 print(snd)
 print()
-if arg == "headless" then
+if arg:match"headless" then
 	if ccemux then ccemux.echo "ready" end
 	while true do coroutine.yield() end
 else

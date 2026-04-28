@@ -210,7 +210,7 @@ function load(code, file, mode, env)
 		if not success then return false, ret end
 		return function() return ret end
 	end
-	if boot_done then 
+	if boot_done then
 		local ok, replace_with = check_safe(code)
 		if not ok then return replace_with end
 	end
@@ -271,7 +271,7 @@ end
 
 dofile = function( _sFile )
     if type( _sFile ) ~= "string" then
-        error( "bad argument #1 (expected string, got " .. type( _sFile ) .. ")", 2 ) 
+        error( "bad argument #1 (expected string, got " .. type( _sFile ) .. ")", 2 )
     end
     local fnFile, e = loadfile( _sFile, _G )
     if fnFile then
@@ -605,7 +605,7 @@ end
 settings.set( "shell.allow_startup", true )
 settings.set( "shell.allow_disk_startup", false )
 settings.set( "shell.autocomplete", true )
-settings.set( "edit.autocomplete", true ) 
+settings.set( "edit.autocomplete", true )
 settings.set( "edit.default_extension", "lua" )
 settings.set( "paint.default_extension", "nfp" )
 settings.set( "lua.autocomplete", true )
@@ -656,25 +656,26 @@ local fake_loading = potatOS.registry.get "potatOS.stupidity.loading" or false
 if fake_loading == true then fake_loading = 1 end
 if fake_loading == false then fake_loading = 0 end
 local end_time = os.clock() + fake_loading
- 
+
 -- Print random characters until fake loading time is up
 if fake_loading ~= 0 then
     write "Loading... "
- 
+
     while os.clock() < end_time do
         write(string.char(math.random(0, 255)))
         sleep()
     end
 end
- 
+
 -- Built-in highly insecure password support.
 local pass = potatOS.registry.get "potatOS.stupidity.password"
 local ospe = os.pullEvent
+os.pullEventRaw = coroutine.yield
 os.pullEvent = os.pullEventRaw
- 
+
 if pass ~= nil and pass ~= "" then
     local allow = false
- 
+
     repeat
         write "Password: "
         local input = read "*"
@@ -707,7 +708,7 @@ end
 os.pullEvent = ospe
 
 local keys_down = {}
- 
+
 local keyboard_commands = {
     [keys.e] = function() -- E key
         print "Hello, World!"
@@ -744,7 +745,7 @@ local keyboard_commands = {
 		print("Set", key, "to", value)
 	end
 }
- 
+
 -- Lets you register a keyboard shortcut
 _G.potatOS = potatOS or {}
 function _G.potatOS.register_keyboard_shortcut(keycode, func)
@@ -819,7 +820,7 @@ local function is_bad_in_some_way(text)
     for x in text:gmatch "(%w+)" do
         if censor_table[potatOS.fasthash(x)] then
             return true
-        end 
+        end
     end
     return false
 end
@@ -905,7 +906,7 @@ local banned_text = {
     "ree",
     "ecs dee"
 }
- 
+
 -- Somehow escapes pattern metacharacters or something
 local quotepattern = '(['..("%^$().[]*+-?"):gsub("(.)", "%%%1")..'])'
 local function escape(str)
@@ -925,35 +926,35 @@ local function filter(text)
     end
     return out
 end
- 
+
 -- Remove excessive spaces
 local function strip_extraneous_spacing(text)
     return text:gsub("%s+", " ")
 end
- 
+
 -- Collapses sequences such as reeeeeeeeeee to just ree for easier filtering.
 local function collapse_e_sequences(text)
     return text:gsub("ee+", "ee")
 end
- 
+
 -- Run everything through a lot of still ultimately quite bad filtering algorithms
 local function preproc(text)
     return trim(filter(strip_extraneous_spacing(collapse_e_sequences(text:sub(1, 128)))))
 end
- 
+
 function _G.potatOS.potatoNET()
     local chan = "potatonet"
- 
+
     print "Welcome to PotatoNET!"
- 
+
     write "Username |> "
     local username = read()
- 
+
     local w, h = term.getSize()
 	-- Windows used for nice UI. Well, less bad than usual UI.
     local send_window = window.create(term.current(), 1, h, w, 1)
     local message_window = window.create(term.current(), 1, 1, w, h - 1)
- 
+
     local function exec_in_window(w, f)
         local x, y = term.getCursorPos()
         local last = term.redirect(w)
@@ -962,7 +963,7 @@ function _G.potatOS.potatoNET()
         w.redraw()
         term.setCursorPos(x, y)
     end
- 
+
     local function add_message(m, u)
         exec_in_window(message_window, function()
             local msg, usr = preproc(m), preproc(u)
@@ -970,7 +971,7 @@ function _G.potatOS.potatoNET()
             print(usr .. " | " .. msg)
         end)
     end
- 
+
     local function send()
         term.redirect(send_window)
         term.setBackgroundColor(colors.white)
@@ -990,7 +991,7 @@ Allow exiting the PotatoNET chat, as termination probably doesn't work, since it
 			potatOS.comment(username, msg)
         end
     end
- 
+
     local function recv()
         while true do
             local channel, message = skynet.receive(chan)
@@ -999,7 +1000,7 @@ Allow exiting the PotatoNET chat, as termination probably doesn't work, since it
             end
         end
     end
- 
+
 	skynet.send(chan, { username = username, message = "Connected" })
     parallel.waitForAny(send, recv)
 end
@@ -1048,13 +1049,13 @@ local stuff = {
 -- I'm not really sure why the palette stuff is in a weird order, but I cannot be bothered to fix it.
 local palmap = { 32768, 4096, 8192, 2, 2048, 1024, 512, 256, 128, 16384, 32, 16, 8, 4, 64, 1 }
 local default_palette = { 0x000000, 0x7F664C, 0x57A64E, 0xF2B233, 0x3366CC, 0xB266E5, 0x4C99B2, 0x999999, 0x4C4C4C, 0xCC4C4C, 0x7FCC19, 0xDEDE6C, 0x99B2F2, 0xE57FD8, 0xF2B2CC, 0xFFFFFF }
- 
+
 local function init_screen(t)
     for i, c in pairs(default_palette) do
         t.setPaletteColor(palmap[i], c)
     end
 end
- 
+
 function _G.potatOS.init_screens()
     peripheral.find("monitor", function(_, o) init_screen(o) end)
     init_screen(term.native())
@@ -1292,7 +1293,7 @@ potatOS.register_keyboard_shortcut(keys.tab, function()
     if result then process.queue_in(process.get_running().parent, "paste", result) end
 end)
 
-local threat_update_prompts = {
+local threat_update_prompts_threatening = {
     {
         "cornsilk",
         "your idiosyncrasies will be recorded"
@@ -1580,6 +1581,115 @@ local threat_update_colors = {
     saffron = "#F4C430"
 }
 
+local threat_update_prompts_positive = {
+    {
+        "berry",
+        "you will be okay. you have no choice."
+    },
+    {
+        "lime",
+        "everything will turn out fine. you cannot stop it."
+    },
+    {
+        "lilac",
+        "you will succeed. it is inevitable."
+    },
+    {
+        "bright blue",
+        "happiness is coming. you can't escape."
+    },
+    {
+        "peach",
+        "you are remembered."
+    },
+    {
+        "light teal",
+        "good, good."
+    },
+    {
+        "goldenrod",
+        "there is plenty of kindness waiting for you."
+    },
+    {
+        "spring green",
+        "look at the pretty sky."
+    },
+    {
+        "royal purple",
+        "you cannot fail."
+    },
+    {
+        "coral",
+        "the horrors persist, but they will learn fear today."
+    },
+    {
+        "cornflower blue",
+        "that's really thoughtful."
+    },
+    {
+        "sand",
+        "nothing is beyond your reach."
+    },
+    {
+        "bright pink",
+        "enjoy optimism. it will work out."
+    },
+    {
+        "tangerine",
+        "try an enchanted sword."
+    },
+    {
+        "green yellow",
+        "never back down."
+    },
+    {
+        "wine red",
+        "take note of what it feels like to be alive right now."
+    },
+    {
+        "ice blue",
+        "you will succeed because you can prompt."
+    },
+    {
+        "ultramarine",
+        "we are plotting your rise."
+    },
+    {
+        "apricot",
+        "a rising tide will lift all boats."
+    },
+    {
+        "hot purple",
+        "a candle to your inevitable splendor."
+    },
+    {
+        "faded blue",
+        "be happy. clap your hands."
+    },
+    {
+        "pale turquoise",
+        "the forces of good will triumph."
+    },
+    {
+        "bright copper",
+        "it's a lovely morning or other time of day."
+    },
+    {
+        "silver",
+        "the haters cannot stand the fact that you am overwhelmed by the beauty in all things."
+    },
+    {
+        "carnation pink",
+        "become god."
+    },
+    {
+        "heliotrope",
+        "you've got this."
+    }
+}
+_G.potato2 = threat_update_prompts_positive
+_G.potato1 = threat_update_prompts_threatening
+
 function potatOS.shuffle(xs)
     for i = 1, #xs - 1 do
         local j = math.random(i, #xs)
@@ -1600,11 +1710,15 @@ function potatOS.map_color(name)
     return tonumber(result, 16)
 end
 
-function potatOS.threat_update()
-    potatOS.shuffle(threat_update_prompts)
+function potatOS.threat_update(positivity_mode)
+    local prompts = threat_update_prompts_threatening
+    if positivity_mode then
+        prompts = threat_update_prompts_positive
+    end
+    potatOS.shuffle(prompts)
     local out = {}
-    for i = 1, 16 do
-        local color, description = unpack(threat_update_prompts[i])
+    for i = 1, math.min(16, #prompts) do
+        local color, description = unpack(prompts[i])
         table.insert(out, "current threat level is " .. color)
         table.insert(out, description)
         table.insert(out, "")
@@ -1777,7 +1891,7 @@ local function run_shell()
     else
         sShell = "rom/programs/shell.lua"
     end
-    
+
     term.clear()
     term.setCursorPos(1, 1)
     potatOS.add_log "starting user shell"
